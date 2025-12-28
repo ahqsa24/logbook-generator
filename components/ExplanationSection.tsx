@@ -98,7 +98,7 @@ export default function ExplanationSection() {
                                 <tr className="hover:bg-purple-50 dark:hover:bg-gray-700">
                                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-300">Lokasi</td>
                                     <td className="px-4 py-3 font-mono text-xs bg-purple-50 dark:bg-gray-700 text-gray-900 dark:text-gray-300">Text</td>
-                                    <td className="px-4 py-3 text-gray-700 dark:text-gray-400">Location (e.g., "Zoom" or "Gedung A")</td>
+                                    <td className="px-4 py-3 text-gray-700 dark:text-gray-400">Location (e.g., &quot;Zoom&quot; or &quot;Gedung A&quot;)</td>
                                 </tr>
                                 <tr className="hover:bg-purple-50 dark:hover:bg-gray-700">
                                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-300">Keterangan</td>
