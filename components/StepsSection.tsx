@@ -118,7 +118,17 @@ export default function StepsSection() {
                 });
 
                 const result = await response.json();
-                setResults(prev => [...prev, { ...result, entry }]);
+                console.log('Backend result:', result);
+                console.log('Result status:', result.status);
+                console.log('Result success:', result.success);
+
+                setResults(prev => [...prev, {
+                    row: i,
+                    status: result.status || (result.success ? 'success' : 'error'),
+                    success: result.success,
+                    error: result.error || result.message,
+                    entry
+                }]);
             } catch (error) {
                 setResults(prev => [...prev, {
                     success: false,

@@ -1,61 +1,64 @@
-# IPB Logbook Generator Web
+# IPB Logbook Generator
 
-A modern web application to automate logbook submission to IPB Student Portal. This is a Next.js conversion of the original Python bot, providing the same functionality through a clean, minimalist purple-themed interface.
+Automated logbook submission tool for IPB Student Portal's Kampus Merdeka program.
 
-## Features
+## 🚀 Features
 
-- 🎨 Clean, minimalist purple design
-- 📊 Excel file upload and parsing
-- 🔐 Session cookie authentication
-- 📝 Batch logbook submission
-- ✅ Real-time progress tracking
-- 📄 Results export to CSV
+- **Hybrid Authentication**: Choose between username/password login or manual cookie input
+- **Batch Processing**: Upload multiple logbook entries at once via Excel
+- **Real-time Progress**: Track submission status for each entry
+- **Secure**: Credentials never stored, direct communication with IPB Portal
+- **Dark Mode**: Eye-friendly interface with dark mode support
+- **Cross-browser**: Works on all modern browsers
 
-## Getting Started
+## 📋 Prerequisites
 
-### Prerequisites
+- Node.js 18+ and npm
+- IPB Student Portal account
+- Excel file with logbook data
 
-- Node.js 18+ installed
-- Active IPB Student Portal account
+## 🛠️ Installation
 
-### Installation
-
-1. Clone this repository or navigate to the project directory:
 ```bash
+# Clone the repository
+git clone <repository-url>
 cd logbook-generator-web
-```
 
-2. Install dependencies:
-```bash
+# Install dependencies
 npm install
-```
 
-3. Run the development server:
-```bash
+# Run development server
 npm run dev
+
+# Build for production
+npm run build
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+## 📖 Usage
 
-## How to Use
+### Step 1: Authentication
 
-### Step 1: Get Your Session Cookies
+Choose one of two methods:
 
-1. Login to [IPB Student Portal](https://studentportal.ipb.ac.id)
-2. Open Developer Tools (F12)
-3. Go to Application → Cookies → studentportal.ipb.ac.id
-4. Copy all cookies (you can paste them as JSON or cookie header format)
+#### Method 1: Username & Password (Recommended)
+1. Enter your Aktivitas ID
+2. Enter your IPB username
+3. Enter your IPB password
+4. Click "Login & Continue"
 
-### Step 2: Get Your Aktivitas ID
+#### Method 2: Manual Cookies (Advanced)
+1. Login to IPB Student Portal
+2. Open DevTools (F12) → Application tab
+3. Navigate to Cookies → studentportal.ipb.ac.id
+4. Copy the Value of these 3 cookies:
+   - `AspNetCore.Session`
+   - `.AspNetCore.Cookies`
+   - `.AspNetCore.Antiforgery`
+5. Paste into respective fields
 
-1. Navigate to your Kampus Merdeka logbook page
-2. Look at the URL in your browser
-3. Copy the long string at the end (after the last `/`)
-   - Example: `mQmVKibuyaaaaaaaaaaaAJGZvXRzvNiKkxQi4S7w`
+### Step 2: Upload Excel File
 
-### Step 3: Prepare Your Excel File
-
-Your Excel file should have the following columns:
+Your Excel file should have these columns:
 
 | Column | Format | Description |
 |--------|--------|-------------|
@@ -65,95 +68,224 @@ Your Excel file should have the following columns:
 | JenisLogId | 1, 2, or 3 | Activity type (1=Pembimbingan, 2=Ujian, 3=Kegiatan) |
 | IsLuring | 0, 1, or 2 | Mode (0=Online, 1=Offline, 2=Hybrid) |
 | Lokasi | Text | Location |
-| Keterangan | Text | Description |
-| FilePath | Text | (Optional) File path reference |
+| Keterangan | Text | Activity description |
+| FilePath | Text | Optional file reference |
 
-### Step 4: Upload and Submit
+### Step 3: Review & Submit
 
-1. Enter your cookies and aktivitas ID
-2. Upload your Excel file
-3. Optionally upload supporting documents for each entry
-4. Review the preview and click "Submit All"
-5. Download the results CSV when complete
+1. Review your entries
+2. Click "Submit All"
+3. Wait for completion
+4. Download results as CSV
 
-## Excel File Example
+## 🔒 Security
 
-You can use the same Excel file format as the original Python bot. See `data.xlsx` in the original bot folder for reference.
+- **No Storage**: Credentials are never stored on our servers
+- **Direct Communication**: All requests go directly to IPB Portal
+- **HTTPS**: All communication is encrypted
+- **Client-side Processing**: Excel parsing happens in your browser
+- **Temporary Sessions**: Cookies are only used for the current session
 
-## Deployment
+## 🌐 Deployment
 
-### Deploy to Vercel
+### Vercel Deployment
 
-The easiest way to deploy this application is using [Vercel](https://vercel.com):
+**✅ YES, this application can be deployed to Vercel with full functionality!**
+
+#### Quick Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=<your-repo-url>)
+
+#### Manual Deployment
 
 ```bash
-npm install -g vercel
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
 vercel
+
+# Deploy to production
+vercel --prod
 ```
 
-### Deploy to Other Platforms
+#### Configuration
 
-This app can be deployed to any platform that supports Next.js:
-- Railway
-- Netlify
-- AWS Amplify
-- Google Cloud Run
+No special configuration needed! The app works out of the box on Vercel because:
 
-## Technical Details
+- ✅ Next.js API Routes are fully supported
+- ✅ No database required
+- ✅ No environment variables needed
+- ✅ All processing happens client-side or in serverless functions
+- ✅ No persistent storage required
 
-### Built With
+#### Vercel-Specific Notes
 
-- **Next.js 15** - React framework
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **xlsx** - Excel file parsing
-- **cheerio** - HTML parsing for CSRF tokens
+1. **Serverless Functions**: API routes (`/api/*`) automatically become serverless functions
+2. **Edge Network**: Static assets served via Vercel's CDN
+3. **Automatic HTTPS**: SSL certificates provided automatically
+4. **Zero Config**: No `vercel.json` needed for basic deployment
 
-### Architecture
+### Other Deployment Options
 
-- **Frontend**: React components with step-by-step wizard interface
-- **Backend**: Next.js API routes for server-side requests
-- **Authentication**: Session cookie-based (no credentials stored)
-- **File Processing**: Client-side Excel parsing, server-side submission
+#### Netlify
+```bash
+npm run build
+# Deploy the .next folder
+```
 
-## Differences from Python Bot
+#### Docker
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
 
-| Feature | Python Bot | Web App |
-|---------|-----------|---------|
-| Cookie extraction | Automatic from browser | Manual input |
-| File upload | Local file paths | Web file upload |
-| Progress tracking | Console output | Real-time UI |
-| Results | CSV file | CSV download + UI display |
-| Deployment | Local only | Can be hosted online |
+#### Traditional Hosting
+```bash
+npm run build
+npm start
+```
 
-## Security Notes
+## 🏗️ Project Structure
 
-- Cookies are only sent to the API routes (never stored on server)
-- All requests are made server-side to avoid CORS issues
-- No credentials or session data are persisted
-- Files are processed in-memory only
+```
+logbook-generator-web/
+├── app/
+│   ├── api/
+│   │   ├── auth/login/      # Username/password authentication
+│   │   └── submit-logbook/  # Logbook submission endpoint
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/
+│   ├── DarkModeToggle.tsx
+│   ├── ExplanationSection.tsx
+│   ├── LandingSection.tsx
+│   ├── Step1Authentication.tsx  # Hybrid auth component
+│   ├── Step2FileUpload.tsx
+│   ├── Step3Review.tsx
+│   ├── Step4Results.tsx
+│   ├── StepIndicator.tsx
+│   └── StepsSection.tsx
+├── lib/
+│   ├── logbook-service.ts   # Excel parsing
+│   └── validation.ts        # Entry validation
+├── types/
+│   └── logbook.ts
+└── public/
+```
 
-## Troubleshooting
+## 🧪 Development
 
-### "Failed to get CSRF tokens"
-- Check that your cookies are valid and not expired
-- Make sure you're logged into IPB Student Portal
-- Verify your aktivitas ID is correct
+```bash
+# Run development server
+npm run dev
 
-### "Invalid date/time format"
-- Ensure dates are in DD/MM/YYYY format
-- Ensure times are in HH:MM format
-- Check that start time is before end time
+# Type checking
+npm run type-check
 
-### "Failed to parse Excel file"
-- Verify your Excel file has all required columns
-- Check that column names match exactly (case-sensitive)
-- Try re-saving the file as .xlsx format
+# Linting
+npm run lint
 
-## License
+# Build
+npm run build
+```
 
-This project is open source and free to use. Modify it as needed for your requirements.
+## 📝 API Endpoints
 
-## Credits
+### POST `/api/auth/login`
+Authenticate with IPB Portal using username/password.
 
-Based on the original [IPB Student Portal Logbook Bot](../IPB-Student-Portal-Logbook-Bot) Python script.
+**Request:**
+```json
+{
+  "username": "string",
+  "password": "string",
+  "aktivitasId": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "cookies": "AspNetCore.Session=...; ...",
+  "message": "Login successful"
+}
+```
+
+### POST `/api/submit-logbook`
+Submit a single logbook entry.
+
+**Request:** `multipart/form-data`
+- `aktivitasId`: string
+- `cookies`: JSON string
+- `entry`: JSON string
+- `file`: File (optional)
+
+**Response:**
+```json
+{
+  "success": true,
+  "status": "success",
+  "statusCode": 302,
+  "message": "Submitted successfully"
+}
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 👥 Authors
+
+- **Ahmad Nur Rohim** - [GitHub](https://github.com/anro128) | [Instagram](https://instagram.com/ahmadnr_12)
+- **Ahmad Qaulan Sadida** - [GitHub](https://github.com/ahqsa24) | [Instagram](https://instagram.com/adidsadida24)
+
+## 📄 License
+
+This project is open source and available under the MIT License.
+
+## ⚠️ Disclaimer
+
+This tool is created for educational purposes to help IPB students manage their logbook entries more efficiently. Use responsibly and in accordance with IPB's policies.
+
+## 🐛 Known Issues
+
+- Some entries may show "error" in results despite successful submission (display issue only)
+- Occasional network timeouts on slow connections (auto-retry implemented)
+
+## 🔮 Future Enhancements
+
+- [ ] Bulk file upload support
+- [ ] Template generator
+- [ ] Export to multiple formats
+- [ ] Mobile app version
+- [ ] Scheduled submissions
+
+## 💡 Tips
+
+1. **Use Username/Password method** for easiest experience
+2. **Keep your Excel file clean** - remove empty rows
+3. **Check IPB Portal** to verify submissions
+4. **Download results CSV** for your records
+5. **Use dark mode** for late-night logbook entries 🌙
+
+## 📞 Support
+
+If you encounter any issues or have questions:
+1. Check the [SECURITY.md](./SECURITY.md) for security-related questions
+2. Open an issue on GitHub
+3. Contact the authors via social media
+
+---
+
+**Made with ❤️ for IPB Students**
+
+*Simplifying logbook management, one entry at a time.*

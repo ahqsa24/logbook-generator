@@ -13,16 +13,36 @@ export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-                const entries: LogbookEntry[] = jsonData.map((row: any) => ({
-                    Waktu: String(row.Waktu || ''),
-                    Tstart: String(row.Tstart || ''),
-                    Tend: String(row.Tend || ''),
-                    JenisLogId: Number(row.JenisLogId || 0),
-                    IsLuring: Number(row.IsLuring || 0),
-                    Lokasi: String(row.Lokasi || ''),
-                    Keterangan: String(row.Keterangan || ''),
-                    FilePath: row.FilePath ? String(row.FilePath) : undefined,
-                }));
+                console.log('Total rows from Excel:', jsonData.length);
+
+                const entries: LogbookEntry[] = jsonData
+                    .filter((row: any) => {
+                        // Skip empty rows
+                        return row.Waktu || row.Keterangan || row.Lokasi;
+                    })
+                    .map((row: any, index: number) => {
+                        const entry = {
+                            Waktu: String(row.Waktu || ''),
+                            Tstart: String(row.Tstart || ''),
+                            Tend: String(row.Tend || ''),
+                            JenisLogId: Number(row.JenisLogId || 0),
+                            IsLuring: Number(row.IsLuring || 0),
+                            Lokasi: String(row.Lokasi || ''),
+                            Keterangan: String(row.Keterangan || ''),
+                            FilePath: row.FilePath ? String(row.FilePath) : undefined,
+                        };
+
+                        // Log if any required field is missing
+                        if (!entry.Waktu || !entry.Keterangan) {
+                            console.warn(`Row ${index + 1} missing required fields:`, entry);
+                        }
+
+                        return entry;
+                    });
+
+                console.log('Parsed entries:', entries.length);
+                console.log('First entry:', entries[0]);
+                console.log('Last entry:', entries[entries.length - 1]);
 
                 resolve(entries);
             } catch (error) {

@@ -18,8 +18,11 @@ export default function ExplanationSection() {
                                 1
                             </span>
                             <div>
-                                <strong className="text-lg text-purple-900 dark:text-purple-300">Login to IPB Student Portal</strong>
-                                <p className="text-gray-600 dark:text-gray-400 mt-1">Copy your session cookies from the browser</p>
+                                <strong className="text-lg text-purple-900 dark:text-purple-300">Choose Authentication Method</strong>
+                                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                                    <strong>Option 1 (Recommended):</strong> Login with IPB username & password - easiest method!<br />
+                                    <strong>Option 2 (Advanced):</strong> Manually enter 3 session cookies from browser DevTools
+                                </p>
                             </div>
                         </li>
                         <li className="flex items-start">
@@ -28,7 +31,7 @@ export default function ExplanationSection() {
                             </span>
                             <div>
                                 <strong className="text-lg text-purple-900 dark:text-purple-300">Enter your Aktivitas ID</strong>
-                                <p className="text-gray-600 dark:text-gray-400 mt-1">Find it in the Kampus Merdeka logbook page URL</p>
+                                <p className="text-gray-600 dark:text-gray-400 mt-1">Find it in the Student Portal logbook page URL (.../Index/[ID])</p>
                             </div>
                         </li>
                         <li className="flex items-start">
@@ -37,7 +40,7 @@ export default function ExplanationSection() {
                             </span>
                             <div>
                                 <strong className="text-lg text-purple-900 dark:text-purple-300">Upload your Excel file</strong>
-                                <p className="text-gray-600 dark:text-gray-400 mt-1">Download our template or use your own with the correct format</p>
+                                <p className="text-gray-600 dark:text-gray-400 mt-1">Use our template format with columns: Waktu, Tstart, Tend, JenisLogId, IsLuring, Lokasi, Keterangan</p>
                             </div>
                         </li>
                         <li className="flex items-start">
@@ -46,7 +49,7 @@ export default function ExplanationSection() {
                             </span>
                             <div>
                                 <strong className="text-lg text-purple-900 dark:text-purple-300">Submit and track progress</strong>
-                                <p className="text-gray-600 dark:text-gray-400 mt-1">All entries will be uploaded automatically with real-time progress</p>
+                                <p className="text-gray-600 dark:text-gray-400 mt-1">All entries will be uploaded automatically with real-time progress tracking</p>
                             </div>
                         </li>
                     </ol>
@@ -115,4 +118,3 @@ export default function ExplanationSection() {
         </section>
     );
 }
-

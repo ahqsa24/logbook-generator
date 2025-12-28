@@ -37,6 +37,10 @@ export async function POST(request: NextRequest) {
         // Step 1: Fetch the modal page to get hidden fields (like Python bot does)
         const modalUrl = `${BASE_URL}/Kegiatan/LogAktivitasKampusMerdeka/Tambah?aktivitasId=${aktivitasId}`;
 
+        // Add timeout to prevent hanging
+        const controller1 = new AbortController();
+        const timeout1 = setTimeout(() => controller1.abort(), 30000);
+
         const modalResponse = await fetch(modalUrl, {
             method: 'GET',
             headers: {
@@ -44,7 +48,10 @@ export async function POST(request: NextRequest) {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Cookie': cookieHeader,
             },
+            signal: controller1.signal,
         });
+
+        clearTimeout(timeout1);
 
         if (!modalResponse.ok) {
             throw new Error(`Failed to fetch modal page: ${modalResponse.status}`);
@@ -107,6 +114,10 @@ export async function POST(request: NextRequest) {
 
         while (retries > 0) {
             try {
+                // Add timeout to prevent hanging
+                const controller2 = new AbortController();
+                const timeout2 = setTimeout(() => controller2.abort(), 30000);
+
                 response = await fetch(postUrl, {
                     method: 'POST',
                     headers: {
@@ -120,7 +131,10 @@ export async function POST(request: NextRequest) {
                     },
                     body: submitFormData,
                     redirect: 'manual',
+                    signal: controller2.signal,
                 });
+
+                clearTimeout(timeout2);
                 break; // Success, exit retry loop
             } catch (error) {
                 lastError = error;
