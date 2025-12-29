@@ -20,7 +20,7 @@ export default function ExplanationSection() {
                             <div>
                                 <strong className="text-lg text-purple-900 dark:text-purple-300">Choose Authentication Method</strong>
                                 <p className="text-gray-600 dark:text-gray-400 mt-1">
-                                    <strong>Option 1 (Recommended):</strong> Login with IPB username & password - easiest method!<br />
+                                    <strong>Option 1 (Recommended):</strong> Login with IPB username & password<br />
                                     <strong>Option 2 (Advanced):</strong> Manually enter 3 session cookies from browser DevTools
                                 </p>
                             </div>
