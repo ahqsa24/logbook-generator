@@ -149,25 +149,28 @@ export async function POST(request: NextRequest) {
             throw lastError || new Error('Failed to submit after retries');
         }
 
-        // Step 4: Check if submission was successful (matching Python bot)
+        // Step 4: Determine success based on HTTP status
         let success = false;
         const statusCode = response.status;
 
+        // Status 302 (redirect) = success
+        // Status 200 with no error keywords = success
         if (statusCode === 302) {
-            // Verify by checking the list page
-            const listUrl = `${BASE_URL}/Kegiatan/LogAktivitasKampusMerdeka/Index/${aktivitasId}`;
-            const listResponse = await fetch(listUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                    'Cookie': cookieHeader,
-                },
-            });
-
-            const listHtml = await listResponse.text();
-            success = listHtml.includes(entry.Keterangan);
+            success = true;
+            console.log('✓ Success: Redirect detected (302)');
+        } else if (statusCode === 200) {
+            const responseText = await response.text();
+            const hasError = responseText.toLowerCase().includes('error') ||
+                responseText.toLowerCase().includes('gagal') ||
+                responseText.toLowerCase().includes('failed');
+            success = !hasError;
+            console.log(hasError ? '✗ Error keywords found in response' : '✓ Success: No errors in response');
+        } else {
+            success = false;
+            console.log(`✗ Failed: Unexpected status ${statusCode}`);
         }
 
-        console.log(`Submission result: status=${statusCode}, success=${success}`);
+        console.log(`Final result: status=${statusCode}, success=${success}`);
 
         return NextResponse.json({
             success,

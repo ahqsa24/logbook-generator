@@ -53,6 +53,7 @@ export default function Step3Review({
                                 <th className="px-3 py-2 text-left text-gray-900 dark:text-gray-200 whitespace-nowrap">Mode</th>
                                 <th className="px-3 py-2 text-left text-gray-900 dark:text-gray-200 whitespace-nowrap">Lokasi</th>
                                 <th className="px-3 py-2 text-left text-gray-900 dark:text-gray-200 min-w-[300px]">Keterangan</th>
+                                <th className="px-3 py-2 text-left text-gray-900 dark:text-gray-200 whitespace-nowrap">Dosen</th>
                                 <th className="px-3 py-2 text-left text-gray-900 dark:text-gray-200 whitespace-nowrap">File</th>
                             </tr>
                         </thead>
@@ -70,6 +71,11 @@ export default function Step3Review({
                                         <div className="max-w-md whitespace-normal break-words">
                                             {entry.Keterangan}
                                         </div>
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        <span className="text-xs font-mono bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded">
+                                            {entry.Dosen || '-'}
+                                        </span>
                                     </td>
                                     <td className="px-3 py-2">
                                         <input

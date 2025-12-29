@@ -240,7 +240,7 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                         </h3>
                         <ol className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
                             <li>Login to IPB Student Portal</li>
-                            <li>Press <kbd className="px-1 py-0.5 bg-blue-100 dark:bg-blue-800 rounded text-xs">F12</kbd> → <strong>Application</strong> tab</li>
+                            <li>Press <kbd className="px-1 py-0.5 bg-blue-100 dark:bg-blue-800 rounded text-xs">Ctrl + Shift + i</kbd> → <strong>Application</strong> tab</li>
                             <li>Expand <strong>Cookies</strong> → <strong>studentportal.ipb.ac.id</strong></li>
                             <li>Find each cookie name below</li>
                             <li><strong>Copy ONLY the Value column</strong> (not the Name!)</li>
