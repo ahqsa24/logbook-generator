@@ -109,18 +109,21 @@ export async function POST(request: NextRequest) {
 
         console.log('All cookies:', Object.keys(allCookies));
 
-        // Step 5: Send ALL AspNetCore cookies (flexible matching)
-        const cookieString = Object.entries(allCookies)
-            .filter(([name]) =>
-                name.includes('AspNetCore') ||
-                name.includes('Antiforgery')
-            )
-            .map(([name, value]) => `${name}=${value}`)
-            .join('; ');
+        // Step 5: Send ONLY .AspNetCore.Cookies
+        const aspNetCoreCookie = Object.entries(allCookies)
+            .find(([name]) => name === '.AspNetCore.Cookies');
 
-        console.log('Sending cookies:', Object.keys(allCookies).filter(n =>
-            n.includes('AspNetCore') || n.includes('Antiforgery')
-        ));
+        console.log('Selected cookie:', aspNetCoreCookie ? aspNetCoreCookie[0] : 'NOT FOUND');
+
+        if (!aspNetCoreCookie) {
+            return NextResponse.json(
+                { success: false, error: 'No .AspNetCore.Cookies found after login' },
+                { status: 500 }
+            );
+        }
+
+        const cookieString = `${aspNetCoreCookie[0]}=${aspNetCoreCookie[1]}`;
+
 
         if (!cookieString) {
             return NextResponse.json(

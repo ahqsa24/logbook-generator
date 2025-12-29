@@ -34,6 +34,11 @@ export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
                             FilePath: row.FilePath ? String(row.FilePath) : undefined,
                         };
 
+                        // Log Dosen field for debugging
+                        if (row.Dosen) {
+                            console.log(`Row ${index + 1} Dosen field:`, row.Dosen, '→', entry.Dosen);
+                        }
+
                         // Log if any required field is missing
                         if (!entry.Waktu || !entry.Keterangan) {
                             console.warn(`Row ${index + 1} missing required fields:`, entry);
@@ -44,6 +49,11 @@ export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
 
                 console.log('Parsed entries:', entries.length);
                 console.log('First entry:', entries[0]);
+                if (entries[0]?.Dosen) {
+                    console.log('✓ First entry HAS Dosen:', entries[0].Dosen);
+                } else {
+                    console.log('✗ First entry NO Dosen');
+                }
                 console.log('Last entry:', entries[entries.length - 1]);
 
                 resolve(entries);

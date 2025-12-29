@@ -70,15 +70,60 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        // Extract dosen checkbox information
+        const dosenCheckboxes: Array<{ index: number; name: string; value: string; id?: string }> = [];
+        $('form input[type=checkbox]').each((_, element) => {
+            const name = $(element).attr('name');
+            const value = $(element).attr('value') || '';
+            const id = $(element).attr('id');
+
+            // Look for dosen-related checkboxes
+            if (name && (name.includes('DosenPembimbing') || name.includes('Pembimbing'))) {
+                // Extract index from name like "ListDosenPembimbing[1].Key_PembimbingId"
+                const indexMatch = name.match(/\[(\d+)\]/);
+                if (indexMatch) {
+                    const index = parseInt(indexMatch[1]);
+                    dosenCheckboxes.push({ index, name, value, id });
+                    console.log(`Found dosen checkbox: index=${index}, name=${name}, value=${value}`);
+                }
+            }
+        });
+
         console.log('Hidden fields extracted:', Object.keys(hiddenFields).length, 'fields');
         console.log('CSRF token present:', !!hiddenFields['__RequestVerificationToken']);
+        console.log('Dosen checkboxes found:', dosenCheckboxes.length);
+
+        // Debug: Log all hidden fields related to dosen
+        console.log('=== ALL HIDDEN FIELDS ===');
+        Object.keys(hiddenFields).forEach(key => {
+            if (key.toLowerCase().includes('dosen') || key.toLowerCase().includes('pembimbing')) {
+                console.log(`  ${key} = ${hiddenFields[key]}`);
+            }
+        });
+
+        // Debug: Log all input elements (not just checkboxes)
+        console.log('=== ALL INPUT ELEMENTS ===');
+        $('form input').each((_, element) => {
+            const name = $(element).attr('name');
+            const type = $(element).attr('type');
+            const value = $(element).attr('value');
+            if (name && (name.includes('Dosen') || name.includes('Pembimbing'))) {
+                console.log(`  Type: ${type}, Name: ${name}, Value: ${value}`);
+            }
+        });
+        console.log('======================');
 
         // Step 2: Prepare form data with hidden fields + entry data
         const submitFormData = new FormData();
 
-        // Add all hidden fields (includes CSRF token)
+        // Add all hidden fields (includes CSRF token AND any dosen-related hidden fields)
         Object.entries(hiddenFields).forEach(([key, value]) => {
-            submitFormData.append(key, value);
+            // Skip dosen fields - we'll add them manually based on entry.Dosen
+            if (!key.includes('DosenPembimbing') && !key.includes('Pembimbing')) {
+                submitFormData.append(key, value);
+            } else {
+                console.log(`Skipping hidden field (will set manually): ${key} = ${value}`);
+            }
         });
 
         // Add entry data (matching Python bot exactly)
@@ -87,22 +132,78 @@ export async function POST(request: NextRequest) {
         submitFormData.append('Tsw', String(entry.Tend));
         submitFormData.append('JenisLogbookKegiatanKampusMerdekaId', String(entry.JenisLogId));
 
-        // Handle Dosen selection (dynamic based on entry.Dosen field)
-        if (entry.Dosen) {
-            // Parse comma-separated dosen numbers: "1", "2", "1,2,3"
-            const dosenNumbers = entry.Dosen.split(',').map((num: string) => parseInt(num.trim()) - 1); // Convert to 0-indexed
-            console.log('Dosen selection:', entry.Dosen, '→ indices:', dosenNumbers);
+        // Debug: Log the entire entry to see what we received
+        console.log('=== ENTRY DATA ===');
+        console.log('Full entry object:', JSON.stringify(entry, null, 2));
+        console.log('entry.Dosen value:', entry.Dosen);
+        console.log('entry.Dosen type:', typeof entry.Dosen);
+        console.log('entry.Dosen truthy?:', !!entry.Dosen);
+        console.log('==================');
 
-            dosenNumbers.forEach((index: number) => {
-                if (index >= 0) {
-                    submitFormData.append(`ListDosenPembimbing[${index}].Value`, 'true');
-                    console.log(`✓ Selected dosen index ${index}`);
+        // Handle Dosen selection (dynamic based on entry.Dosen field)
+        if (dosenCheckboxes.length > 0) {
+            if (entry.Dosen && String(entry.Dosen).trim() !== '') {
+                // Parse comma-separated dosen numbers: "1", "2", "1,2,3"
+                const dosenString = String(entry.Dosen).trim();
+                console.log('Raw Dosen value:', dosenString);
+
+                // Split by comma and parse each number
+                const dosenNumbers = dosenString
+                    .split(',')
+                    .map((num: string) => {
+                        const trimmed = num.trim();
+                        const parsed = parseInt(trimmed, 10);
+                        console.log(`  Parsing "${trimmed}" → ${parsed}`);
+                        return parsed;
+                    })
+                    .filter((num: number) => !isNaN(num) && num > 0) // Filter out invalid numbers
+                    .map((num: number) => num - 1); // Convert to 0-indexed
+
+                console.log('Dosen indices to select:', dosenNumbers);
+
+                if (dosenNumbers.length > 0) {
+                    dosenNumbers.forEach((selectedIndex: number) => {
+                        // Find the checkbox with this index
+                        const checkbox = dosenCheckboxes.find(cb => cb.index === selectedIndex);
+                        if (checkbox) {
+                            // Use the exact field name from the form
+                            submitFormData.append(checkbox.name, checkbox.value);
+                            console.log(`✓ Selected dosen index ${selectedIndex}: ${checkbox.name} = ${checkbox.value}`);
+                        } else {
+                            console.warn(`⚠ No checkbox found for dosen index ${selectedIndex}`);
+                        }
+                    });
+                } else {
+                    console.warn('⚠ No valid dosen numbers found, defaulting to first dosen');
+                    if (dosenCheckboxes[0]) {
+                        submitFormData.append(dosenCheckboxes[0].name, dosenCheckboxes[0].value);
+                        console.log(`✓ Default: Selected first dosen: ${dosenCheckboxes[0].name} = ${dosenCheckboxes[0].value}`);
+                    }
                 }
-            });
+            } else {
+                // Default: select first dosen if no Dosen field specified
+                console.log('No Dosen field specified, using default (first dosen)');
+                if (dosenCheckboxes[0]) {
+                    submitFormData.append(dosenCheckboxes[0].name, dosenCheckboxes[0].value);
+                    console.log(`✓ Default: Selected first dosen: ${dosenCheckboxes[0].name} = ${dosenCheckboxes[0].value}`);
+                }
+            }
         } else {
-            // Default: select first dosen if no Dosen field specified
-            submitFormData.append('ListDosenPembimbing[0].Value', 'true');
-            console.log('✓ Default: Selected dosen index 0');
+            // Fallback to old method if no checkboxes found
+            console.warn('⚠ No dosen checkboxes found in form, using fallback method');
+            if (entry.Dosen && String(entry.Dosen).trim() !== '') {
+                const dosenString = String(entry.Dosen).trim();
+                const dosenNumbers = dosenString
+                    .split(',')
+                    .map((num: string) => parseInt(num.trim(), 10) - 1)
+                    .filter((num: number) => !isNaN(num) && num >= 0);
+
+                dosenNumbers.forEach((index: number) => {
+                    submitFormData.append(`ListDosenPembimbing[${index}].Value`, 'true');
+                });
+            } else {
+                submitFormData.append('ListDosenPembimbing[0].Value', 'true');
+            }
         }
 
         // Handle IsLuring (matching Python bot logic)

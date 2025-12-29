@@ -73,7 +73,7 @@ export default function Step3Review({
                                         </div>
                                     </td>
                                     <td className="px-3 py-2">
-                                        <span className="text-xs font-mono bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded">
+                                        <span className="text-xs font-mono bg-purple-100 dark:bg-purple-900 dark:text-gray-300 px-2 py-1 rounded">
                                             {entry.Dosen || '-'}
                                         </span>
                                     </td>

@@ -21,7 +21,7 @@ export default function ExplanationSection() {
                                 <strong className="text-lg text-purple-900 dark:text-purple-300">Choose Authentication Method</strong>
                                 <p className="text-gray-600 dark:text-gray-400 mt-1">
                                     <strong>Option 1 (Recommended):</strong> Login with IPB username & password<br />
-                                    <strong>Option 2 (Advanced):</strong> Manually enter 3 session cookies from browser DevTools
+                                    <strong>Option 2 (Advanced):</strong> Manually enter session cookie from browser DevTools
                                 </p>
                             </div>
                         </li>
@@ -30,8 +30,14 @@ export default function ExplanationSection() {
                                 2
                             </span>
                             <div>
-                                <strong className="text-lg text-purple-900 dark:text-purple-300">Enter your Aktivitas ID</strong>
-                                <p className="text-gray-600 dark:text-gray-400 mt-1">Find it in the Student Portal logbook page URL (.../Index/[ID])</p>
+                                <strong className="text-lg text-purple-900 dark:text-purple-300">Get your Aktivitas ID</strong>
+                                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                                    Navigate to your <strong>Aktivitas page</strong> in Student Portal, then open your logbook.
+                                    Copy the ID from the URL after <code className="px-1 py-0.5 bg-purple-100 dark:bg-gray-700 rounded text-xs font-mono">/Index/</code>
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                                    Example: https://studentportal.ipb.ac.id/.../Index/<strong className="text-purple-600 dark:text-purple-400">pGE9-ocaMx91vaHe6dyfEmIrG5-MZFAoLZuMtA-O1c8</strong>
+                                </p>
                             </div>
                         </li>
                         <li className="flex items-start">
@@ -40,7 +46,34 @@ export default function ExplanationSection() {
                             </span>
                             <div>
                                 <strong className="text-lg text-purple-900 dark:text-purple-300">Upload your Excel file</strong>
-                                <p className="text-gray-600 dark:text-gray-400 mt-1">Use our template format with columns: Waktu, Tstart, Tend, JenisLogId, IsLuring, Lokasi, Keterangan</p>
+                                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                                    Use our template format with columns: Waktu, Tstart, Tend, JenisLogId, IsLuring, Lokasi, Keterangan, Dosen, FilePath
+                                </p>
+                                <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
+                                    <p className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-2">📥 Download Templates:</p>
+                                    <div className="flex flex-wrap gap-3">
+                                        <a
+                                            href="/templates/logbook-template.xlsx"
+                                            download
+                                            className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 border border-purple-300 dark:border-purple-600 rounded-lg text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Excel Template
+                                        </a>
+                                        <a
+                                            href="/templates/logbook-package-example.zip"
+                                            download
+                                            className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 border border-purple-300 dark:border-purple-600 rounded-lg text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            ZIP Package Example
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </li>
                         <li className="flex items-start">
