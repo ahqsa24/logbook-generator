@@ -9,25 +9,6 @@ export default function Step2FileUpload({
     onFileUpload,
     onBack,
 }: Step2FileUploadProps) {
-    const handleDownloadTemplate = () => {
-        // Create template data
-        const templateData = [
-            ['Waktu', 'Tstart', 'Tend', 'JenisLogId', 'IsLuring', 'Lokasi', 'Keterangan', 'FilePath'],
-            ['25/08/2025', '08:00', '16:00', '3', '1', 'PT Islam Pacific Indonesia Lines (SPIL) - Tanjung Priok', 'Orientasi perusahaan dan pengenalan sistem logistik SPIL, dengan aktivitas melakukan koordinasi harian dan mempelajari standar pengembangan internal perusahaan', ''],
-            ['26/08/2025', '08:00', '16:00', '3', '1', 'PT Islam Pacific Indonesia Lines (SPIL) - Tanjung Priok', 'Orientasi perusahaan dan pengenalan sistem logistik SPIL, dengan aktivitas melakukan koordinasi harian dan mempelajari standar pengembangan internal perusahaan', ''],
-        ];
-
-        // Convert to CSV
-        const csv = templateData.map(row => row.join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'logbook-template.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
     return (
         <div className="card dark:bg-gray-800 dark:border-gray-700">
             <h2 className="text-2xl font-semibold text-purple-900 dark:text-purple-300 mb-6">
@@ -36,18 +17,46 @@ export default function Step2FileUpload({
 
             <div className="mb-6">
                 <p className="text-gray-700 dark:text-gray-300 mb-4">
-                    Upload your Excel file containing logbook entries. Make sure it follows the correct format.
+                    Upload your Excel file or ZIP package containing logbook entries. Make sure it follows the correct format.
                 </p>
 
-                <button
-                    onClick={handleDownloadTemplate}
-                    className="mb-4 px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Download Template
-                </button>
+                {/* Download Templates Section */}
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4 mb-4">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                        </svg>
+                        Download Templates:
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                        {/* Excel Template */}
+                        <a
+                            href="/templates/logbook-template.xlsx"
+                            download="logbook-template.xlsx"
+                            className="flex-1 min-w-[200px] px-4 py-3 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="font-semibold">Excel Template</span>
+                        </a>
+
+                        {/* ZIP Template */}
+                        <a
+                            href="/templates/logbook-package-example.zip"
+                            download="logbook-package-example.zip"
+                            className="flex-1 min-w-[200px] px-4 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                            </svg>
+                            <span className="font-semibold">ZIP Package Example</span>
+                        </a>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-3">
+                        💡 <strong>Tip:</strong> Use ZIP package for automatic file attachment!
+                    </p>
+                </div>
             </div>
 
             {/* File Upload Area */}
