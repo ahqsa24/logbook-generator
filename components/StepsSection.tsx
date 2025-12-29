@@ -22,18 +22,21 @@ export default function StepsSection() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentSubmission, setCurrentSubmission] = useState(0);
 
-    // Load state from localStorage on mount
+    // Load state from localStorage on mount (only if from Step 3+)
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
-                    if (parsed.step) setStep(parsed.step);
-                    if (parsed.aktivitasId) setAktivitasId(parsed.aktivitasId);
-                    if (parsed.cookies) setCookies(parsed.cookies);
-                    if (parsed.entries) setEntries(parsed.entries);
-                    if (parsed.results) setResults(parsed.results);
+                    // Only restore if saved state was from Step 3 or later
+                    if (parsed.step && parsed.step >= 3) {
+                        if (parsed.step) setStep(parsed.step);
+                        if (parsed.aktivitasId) setAktivitasId(parsed.aktivitasId);
+                        if (parsed.cookies) setCookies(parsed.cookies);
+                        if (parsed.entries) setEntries(parsed.entries);
+                        if (parsed.results) setResults(parsed.results);
+                    }
                 } catch (e) {
                     console.error('Failed to load saved state:', e);
                 }
@@ -41,9 +44,9 @@ export default function StepsSection() {
         }
     }, []);
 
-    // Save state to localStorage whenever it changes (exclude large file data)
+    // Save state to localStorage only after Step 2 (file upload completed)
     useEffect(() => {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && step >= 3) {
             // Remove fileData from entries to save space
             const entriesWithoutFileData = entries.map(entry => ({
                 ...entry,
@@ -69,6 +72,13 @@ export default function StepsSection() {
                 } catch (e) {
                     console.error('Failed to clear localStorage:', e);
                 }
+            }
+        } else if (typeof window !== 'undefined' && step < 3) {
+            // Clear localStorage when going back to Step 1 or 2
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (e) {
+                console.error('Failed to clear localStorage:', e);
             }
         }
     }, [step, aktivitasId, cookies, entries, results]);

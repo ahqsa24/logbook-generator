@@ -86,7 +86,24 @@ export async function POST(request: NextRequest) {
         submitFormData.append('Tmw', String(entry.Tstart));
         submitFormData.append('Tsw', String(entry.Tend));
         submitFormData.append('JenisLogbookKegiatanKampusMerdekaId', String(entry.JenisLogId));
-        submitFormData.append('ListDosenPembimbing[0].Value', 'true');
+
+        // Handle Dosen selection (dynamic based on entry.Dosen field)
+        if (entry.Dosen) {
+            // Parse comma-separated dosen numbers: "1", "2", "1,2,3"
+            const dosenNumbers = entry.Dosen.split(',').map((num: string) => parseInt(num.trim()) - 1); // Convert to 0-indexed
+            console.log('Dosen selection:', entry.Dosen, '→ indices:', dosenNumbers);
+
+            dosenNumbers.forEach((index: number) => {
+                if (index >= 0) {
+                    submitFormData.append(`ListDosenPembimbing[${index}].Value`, 'true');
+                    console.log(`✓ Selected dosen index ${index}`);
+                }
+            });
+        } else {
+            // Default: select first dosen if no Dosen field specified
+            submitFormData.append('ListDosenPembimbing[0].Value', 'true');
+            console.log('✓ Default: Selected dosen index 0');
+        }
 
         // Handle IsLuring (matching Python bot logic)
         if (entry.IsLuring === 1) {
