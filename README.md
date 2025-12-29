@@ -5,6 +5,8 @@ Automated logbook submission tool for IPB Student Portal's Kampus Merdeka progra
 ## 🚀 Features
 
 - **Hybrid Authentication**: Choose between username/password login or manual cookie input
+- **ZIP Upload Support**: Upload Excel + supporting files in one ZIP package
+- **Dosen Selection**: Automatically select lecturers using simple numbering (1, 2, 3)
 - **Batch Processing**: Upload multiple logbook entries at once via Excel
 - **Real-time Progress**: Track submission status for each entry
 - **Secure**: Credentials never stored, direct communication with IPB Portal
@@ -22,7 +24,7 @@ Automated logbook submission tool for IPB Student Portal's Kampus Merdeka progra
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd logbook-generator-web
+cd logbook-generator
 
 # Install dependencies
 npm install
@@ -56,101 +58,62 @@ Choose one of two methods:
    - `.AspNetCore.Antiforgery`
 5. Paste into respective fields
 
-### Step 2: Upload Excel File
+### Step 2: Upload File
 
-Your Excel file should have these columns:
+#### Option 1: Excel Only
+Upload `.xlsx`, `.xls`, or `.csv` file. Add supporting files manually in Step 3.
+
+#### Option 2: ZIP Package (Recommended)
+Create a folder structure:
+```
+📁 Logbook_Batch/
+  ├── 📄 logbook.xlsx
+  └── 📁 files/
+      ├── bukti1.pdf
+      ├── foto1.jpg
+      └── dokumen1.pdf
+```
+
+Zip the folder and upload. Files will be automatically attached based on `FilePath` column!
+
+### Excel Format
 
 | Column | Format | Description |
 |--------|--------|-------------|
-| Waktu | DD/MM/YYYY | Date of activity |
-| Tstart | HH:MM | Start time |
-| Tend | HH:MM | End time |
-| JenisLogId | 1, 2, or 3 | Activity type (1=Pembimbingan, 2=Ujian, 3=Kegiatan) |
-| IsLuring | 0, 1, or 2 | Mode (0=Online, 1=Offline, 2=Hybrid) |
-| Lokasi | Text | Location |
+| Waktu | DD/MM/YYYY | Date of activity (e.g., 25/08/2025) |
+| Tstart | HH:MM | Start time (e.g., 08:00) |
+| Tend | HH:MM | End time (e.g., 16:00) |
+| JenisLogId | 1, 2, or 3 | Activity type: 1=Pembimbingan, 2=Ujian, 3=Kegiatan |
+| IsLuring | 0, 1, or 2 | Mode: 0=Online, 1=Offline, 2=Hybrid |
+| Lokasi | Text | Location (e.g., "Zoom Meeting", "IPB Campus") |
 | Keterangan | Text | Activity description |
-| FilePath | Text | Optional file reference |
+| Dosen | Text | Lecturer selection: "1", "2", "1,2", "1,2,3" |
+| FilePath | Text | Path to supporting file: "files/bukti1.pdf" |
+
+**Example:**
+
+| Waktu | Tstart | Tend | JenisLogId | IsLuring | Lokasi | Keterangan | Dosen | FilePath |
+|-------|--------|------|------------|----------|--------|------------|-------|----------|
+| 25/08/2025 | 08:00 | 16:00 | 1 | 0 | Online | Pembimbingan | 1 | files/bukti1.pdf |
+| 26/08/2025 | 08:00 | 16:00 | 2 | 1 | IPB | Ujian | 2 | files/bukti2.pdf |
+| 27/08/2025 | 08:00 | 16:00 | 1 | 2 | Hybrid | Meeting | 1,2 | |
 
 ### Step 3: Review & Submit
 
 1. Review your entries
-2. Click "Submit All"
-3. Wait for completion
-4. Download results as CSV
+2. Files from ZIP are automatically attached (✓ matched, ✗ missing)
+3. Upload additional files if needed
+4. Click "Submit All"
+5. Wait for completion
+6. Download results as CSV
 
 ## 🔒 Security
 
 - **No Storage**: Credentials are never stored on our servers
 - **Direct Communication**: All requests go directly to IPB Portal
 - **HTTPS**: All communication is encrypted
-- **Client-side Processing**: Excel parsing happens in your browser
+- **Client-side Processing**: Excel and ZIP parsing happen in your browser
 - **Temporary Sessions**: Cookies are only used for the current session
-
-## 🌐 Deployment
-
-### Vercel Deployment
-
-**✅ YES, this application can be deployed to Vercel with full functionality!**
-
-#### Quick Deploy
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=<your-repo-url>)
-
-#### Manual Deployment
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-
-# Deploy to production
-vercel --prod
-```
-
-#### Configuration
-
-No special configuration needed! The app works out of the box on Vercel because:
-
-- ✅ Next.js API Routes are fully supported
-- ✅ No database required
-- ✅ No environment variables needed
-- ✅ All processing happens client-side or in serverless functions
-- ✅ No persistent storage required
-
-#### Vercel-Specific Notes
-
-1. **Serverless Functions**: API routes (`/api/*`) automatically become serverless functions
-2. **Edge Network**: Static assets served via Vercel's CDN
-3. **Automatic HTTPS**: SSL certificates provided automatically
-4. **Zero Config**: No `vercel.json` needed for basic deployment
-
-### Other Deployment Options
-
-#### Netlify
-```bash
-npm run build
-# Deploy the .next folder
-```
-
-#### Docker
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-#### Traditional Hosting
-```bash
-npm run build
-npm start
-```
 
 ## 🏗️ Project Structure
 
@@ -168,13 +131,13 @@ logbook-generator-web/
 │   ├── ExplanationSection.tsx
 │   ├── LandingSection.tsx
 │   ├── Step1Authentication.tsx  # Hybrid auth component
-│   ├── Step2FileUpload.tsx
+│   ├── Step2FileUpload.tsx      # ZIP + Excel upload
 │   ├── Step3Review.tsx
 │   ├── Step4Results.tsx
 │   ├── StepIndicator.tsx
 │   └── StepsSection.tsx
 ├── lib/
-│   ├── logbook-service.ts   # Excel parsing
+│   ├── logbook-service.ts   # Excel + ZIP parsing
 │   └── validation.ts        # Entry validation
 ├── types/
 │   └── logbook.ts
@@ -226,7 +189,7 @@ Submit a single logbook entry.
 **Request:** `multipart/form-data`
 - `aktivitasId`: string
 - `cookies`: JSON string
-- `entry`: JSON string
+- `entry`: JSON string (includes Dosen field)
 - `file`: File (optional)
 
 **Response:**
@@ -256,26 +219,15 @@ This project is open source and available under the MIT License.
 
 This tool is created for educational purposes to help IPB students manage their logbook entries more efficiently. Use responsibly and in accordance with IPB's policies.
 
-## 🐛 Known Issues
-
-- Some entries may show "error" in results despite successful submission (display issue only)
-- Occasional network timeouts on slow connections (auto-retry implemented)
-
-## 🔮 Future Enhancements
-
-- [ ] Bulk file upload support
-- [ ] Template generator
-- [ ] Export to multiple formats
-- [ ] Mobile app version
-- [ ] Scheduled submissions
-
 ## 💡 Tips
 
-1. **Use Username/Password method** for easiest experience
-2. **Keep your Excel file clean** - remove empty rows
-3. **Check IPB Portal** to verify submissions
-4. **Download results CSV** for your records
-5. **Use dark mode** for late-night logbook entries 🌙
+1. **Use ZIP upload** for automatic file attachment
+2. **Use Username/Password method** for easiest experience
+3. **Dosen field**: Use numbers (1,2,3) for lecturer selection
+4. **Keep your Excel file clean** - remove empty rows
+5. **Check IPB Portal** to verify submissions
+6. **Download results CSV** for your records
+7. **Use dark mode** for late-night logbook entries 🌙
 
 ## 📞 Support
 

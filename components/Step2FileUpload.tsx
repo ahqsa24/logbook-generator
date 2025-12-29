@@ -54,7 +54,7 @@ export default function Step2FileUpload({
             <div className="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-12 text-center hover:border-purple-500 dark:hover:border-purple-600 transition-colors duration-200 bg-purple-50 dark:bg-gray-700/50">
                 <input
                     type="file"
-                    accept=".xlsx,.xls,.csv"
+                    accept=".xlsx,.xls,.csv,.zip"
                     onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) onFileUpload(file);
@@ -82,16 +82,38 @@ export default function Step2FileUpload({
                         Click to upload or drag and drop
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Excel files (.xlsx, .xls) or CSV files
+                        Excel files (.xlsx, .xls, .csv) or ZIP files
+                    </p>
+                    <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                        💡 Upload ZIP to auto-include supporting files!
                     </p>
                 </label>
             </div>
 
             <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                 <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
+                    📋 Two Upload Options:
+                </p>
+                <div className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                    <div>
+                        <strong>Option 1: Excel Only</strong>
+                        <p className="text-xs">Upload .xlsx/.xls/.csv file. Add supporting files manually in Step 3.</p>
+                    </div>
+                    <div>
+                        <strong>Option 2: ZIP Package (Recommended)</strong>
+                        <p className="text-xs">Create folder with Excel + files/ subfolder, zip it, and upload!</p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                            Structure: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">logbook.xlsx</code> + <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">files/bukti1.pdf</code>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-200 mb-2">
                     📋 Required Excel Format:
                 </p>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+                <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">
                     <li><strong>Waktu</strong>: Date in DD/MM/YYYY format</li>
                     <li><strong>Tstart</strong>: Start time in HH:MM format</li>
                     <li><strong>Tend</strong>: End time in HH:MM format</li>
@@ -99,7 +121,8 @@ export default function Step2FileUpload({
                     <li><strong>IsLuring</strong>: 0 (Online), 1 (Offline), or 2 (Hybrid)</li>
                     <li><strong>Lokasi</strong>: Location text</li>
                     <li><strong>Keterangan</strong>: Activity description</li>
-                    <li><strong>FilePath</strong>: (Optional) Path to supporting file</li>
+                    <li><strong>Dosen</strong>: Lecturer selection - use numbers: "1", "2", "1,2", "1,2,3"</li>
+                    <li><strong>FilePath</strong>: Path to supporting file (e.g., <code className="text-xs bg-gray-200 dark:bg-gray-600 px-1 rounded">files/bukti1.pdf</code>)</li>
                 </ul>
             </div>
 

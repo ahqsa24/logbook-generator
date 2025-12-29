@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { LogbookEntry, SubmissionResult, CookieData } from '@/types/logbook';
-import { parseExcelFile, parseCookieString } from '@/lib/logbook-service';
+import { parseExcelFile, parseZipFile, parseCookieString } from '@/lib/logbook-service';
 import { validateLogbookEntry } from '@/lib/validation';
 import StepIndicator from '@/components/StepIndicator';
 import Step1Authentication from '@/components/Step1Authentication';
@@ -41,18 +41,35 @@ export default function StepsSection() {
         }
     }, []);
 
-    // Save state to localStorage whenever it changes
+    // Save state to localStorage whenever it changes (exclude large file data)
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            // Remove fileData from entries to save space
+            const entriesWithoutFileData = entries.map(entry => ({
+                ...entry,
+                fileData: undefined, // Don't save base64 data
+            }));
+
             const stateToSave = {
                 step,
                 aktivitasId,
                 cookies,
-                entries,
+                entries: entriesWithoutFileData,
                 results,
                 timestamp: new Date().toISOString(),
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+            } catch (error) {
+                console.warn('Failed to save state to localStorage:', error);
+                // If still too large, clear old state
+                try {
+                    localStorage.removeItem(STORAGE_KEY);
+                } catch (e) {
+                    console.error('Failed to clear localStorage:', e);
+                }
+            }
         }
     }, [step, aktivitasId, cookies, entries, results]);
 
@@ -65,7 +82,18 @@ export default function StepsSection() {
 
     const handleFileUpload = async (file: File) => {
         try {
-            const parsedEntries = await parseExcelFile(file);
+            let parsedEntries: LogbookEntry[];
+
+            // Detect file type and route to appropriate parser
+            if (file.name.endsWith('.zip')) {
+                console.log('ZIP file detected, using parseZipFile');
+                const { entries } = await parseZipFile(file);
+                parsedEntries = entries;
+            } else {
+                console.log('Excel file detected, using parseExcelFile');
+                parsedEntries = await parseExcelFile(file);
+            }
+
             const validatedEntries = parsedEntries.map(entry => ({
                 ...entry,
                 validation: validateLogbookEntry(entry)
@@ -73,7 +101,9 @@ export default function StepsSection() {
             setEntries(validatedEntries);
             setStep(3);
         } catch (error) {
-            alert('Error parsing Excel file. Please check the format.');
+            const errorMessage = (error as Error).message || 'Unknown error';
+            alert(`Error parsing file: ${errorMessage}\n\nPlease check the file format and try again.`);
+            console.error('File parsing error:', error);
         }
     };
 

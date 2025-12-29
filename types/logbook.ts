@@ -6,6 +6,7 @@ export interface LogbookEntry {
     IsLuring: number;       // 0 (online), 1 (offline), 2 (hybrid)
     Lokasi: string;
     Keterangan: string;
+    Dosen?: string;         // Comma-separated lecturer numbers: "1", "2", "1,2,3"
     FilePath?: string;
     fileData?: string;      // base64 encoded file
     fileName?: string;      // original file name
