@@ -108,12 +108,12 @@ export default function ExplanationSection() {
                                 <tr className="hover:bg-purple-50 dark:hover:bg-gray-700">
                                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-300">Dosen</td>
                                     <td className="px-4 py-3 font-mono text-xs bg-purple-50 dark:bg-gray-700 text-gray-900 dark:text-gray-300">1, 2, 1,2,3</td>
-                                    <td className="px-4 py-3 text-gray-700 dark:text-gray-400">Lecturer selection (e.g., "1" or "1,2")</td>
+                                    <td className="px-4 py-3 text-gray-700 dark:text-gray-400">Lecturer selection (e.g., &quot;1&quot; or &quot;1,2&quot;)</td>
                                 </tr>
                                 <tr className="hover:bg-purple-50 dark:hover:bg-gray-700">
                                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-300">FilePath</td>
                                     <td className="px-4 py-3 font-mono text-xs bg-purple-50 dark:bg-gray-700 text-gray-900 dark:text-gray-300">Text</td>
-                                    <td className="px-4 py-3 text-gray-700 dark:text-gray-400">Optional: File path (e.g., "files/bukti1.pdf")</td>
+                                    <td className="px-4 py-3 text-gray-700 dark:text-gray-400">Optional: File path (e.g., &quot;files/bukti1.pdf&quot;)</td>
                                 </tr>
                             </tbody>
                         </table>

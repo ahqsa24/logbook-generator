@@ -130,7 +130,7 @@ export default function Step2FileUpload({
                     <li><strong>IsLuring</strong>: 0 (Online), 1 (Offline), or 2 (Hybrid)</li>
                     <li><strong>Lokasi</strong>: Location text</li>
                     <li><strong>Keterangan</strong>: Activity description</li>
-                    <li><strong>Dosen</strong>: Lecturer selection - use numbers: "1", "2", "1,2", "1,2,3"</li>
+                    <li><strong>Dosen</strong>: Lecturer selection - use numbers: &quot;1&quot;, &quot;2&quot;, &quot;1,2&quot;, &quot;1,2,3&quot;</li>
                     <li><strong>FilePath</strong>: Path to supporting file (e.g., <code className="text-xs bg-gray-200 dark:bg-gray-600 px-1 rounded">files/bukti1.pdf</code>)</li>
                 </ul>
             </div>
