@@ -16,8 +16,10 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [error, setError] = useState('');
 
-    // Manual method state - only need .AspNetCore.Cookies
+    // Manual method states
+    const [aspNetCoreSession, setAspNetCoreSession] = useState('');
     const [aspNetCoreCookies, setAspNetCoreCookies] = useState('');
+    const [aspNetCoreAntiforgery, setAspNetCoreAntiforgery] = useState('');
 
     const handleLogin = async () => {
         if (!aktivitasId || !username || !password) {
@@ -56,18 +58,43 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
     };
 
     const handleManualSubmit = () => {
-        // Only need .AspNetCore.Cookies
+        // Build cookie string with proper formatting
         let cookieString = '';
 
+        // Add AspNetCore.Session if provided
+        if (aspNetCoreSession) {
+            cookieString += `AspNetCore.Session=${aspNetCoreSession}; `;
+        }
+
+        // Add AspNetCore.Cookies (may be .AspNetCore.Cookies)
         if (aspNetCoreCookies) {
+            // Check if it starts with a dot
+            const cookieName = aspNetCoreCookies.includes('=')
+                ? aspNetCoreCookies.split('=')[0]
+                : (aspNetCoreCookies.startsWith('.') ? aspNetCoreCookies : 'AspNetCore.Cookies');
+
             if (aspNetCoreCookies.includes('=')) {
                 // User pasted full cookie (name=value)
-                cookieString = aspNetCoreCookies;
+                cookieString += `${aspNetCoreCookies}; `;
             } else {
                 // User pasted just the value
-                cookieString = `.AspNetCore.Cookies=${aspNetCoreCookies}`;
+                cookieString += `.AspNetCore.Cookies=${aspNetCoreCookies}; `;
             }
         }
+
+        // Add Antiforgery cookie (handle dynamic suffix like .AspNetCore.Antiforgery.XXX)
+        if (aspNetCoreAntiforgery) {
+            if (aspNetCoreAntiforgery.includes('=')) {
+                // User pasted full cookie (name=value)
+                cookieString += `${aspNetCoreAntiforgery}; `;
+            } else {
+                // User pasted just the value - use dynamic name
+                cookieString += `.AspNetCore.Antiforgery=${aspNetCoreAntiforgery}; `;
+            }
+        }
+
+        // Remove trailing semicolon and space
+        cookieString = cookieString.trim().replace(/;$/, '');
 
         console.log('Manual cookies formatted:', cookieString.substring(0, 100) + '...');
         onSubmit(aktivitasId, cookieString);
@@ -209,42 +236,77 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                     {/* Instructions */}
                     <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                         <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2 text-sm">
-                            📍 How to get the cookie:
+                            📍 How to get cookies:
                         </h3>
                         <ol className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
                             <li>Login to IPB Student Portal</li>
                             <li>Press <kbd className="px-1 py-0.5 bg-blue-100 dark:bg-blue-800 rounded text-xs">Ctrl + Shift + i</kbd> → <strong>Application</strong> tab</li>
                             <li>Expand <strong>Cookies</strong> → <strong>studentportal.ipb.ac.id</strong></li>
-                            <li>Find cookie named <strong>.AspNetCore.Cookies</strong></li>
-                            <li><strong>Copy ONLY the Value</strong> (long random string)</li>
+                            <li>Find each cookie name below</li>
+                            <li><strong>Copy ONLY the Value column</strong> (not the Name!)</li>
                         </ol>
                         <p className="text-xs text-blue-700 dark:text-blue-300 mt-2 font-semibold">
-                            💡 Tip: Only this one cookie is needed!
+                            ⚠️ Important: All 3 cookies are required for proper authentication
                         </p>
                     </div>
 
-                    {/* .AspNetCore.Cookies - ONLY cookie needed */}
+                    {/* .AspNetCore.Antiforgery */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            .AspNetCore.Antiforgery <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={aspNetCoreAntiforgery}
+                            onChange={(e) => setAspNetCoreAntiforgery(e.target.value)}
+                            placeholder="Paste the VALUE only"
+                            className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Look for cookie starting with <strong>.AspNetCore.Antiforgery</strong>
+                        </p>
+                    </div>
+
+                    {/* AspNetCore.Session */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            AspNetCore.Session <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={aspNetCoreSession}
+                            onChange={(e) => setAspNetCoreSession(e.target.value)}
+                            placeholder="Paste the VALUE only"
+                            className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Example: CfDJ8...
+                        </p>
+                    </div>
+
+
+
+                    {/* .AspNetCore.Cookies */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             .AspNetCore.Cookies <span className="text-red-500">*</span>
                         </label>
                         <textarea
-                            rows={5}
+                            rows={4}
                             value={aspNetCoreCookies}
                             onChange={(e) => setAspNetCoreCookies(e.target.value)}
-                            placeholder="Paste the VALUE only (long random string)"
-                            className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm resize-none"
+                            placeholder="Paste the VALUE only"
+                            className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm"
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Example: CfDJ8A1B2C3D4E5F6G7H8I9J0K...
+                            Example: CfDJ8...
                         </p>
                     </div>
-
 
                     {/* Submit Button */}
                     <button
                         onClick={handleManualSubmit}
-                        disabled={!aktivitasId || !aspNetCoreCookies}
+                        disabled={!aktivitasId || !aspNetCoreSession || !aspNetCoreCookies || !aspNetCoreAntiforgery}
                         className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Continue to File Upload
