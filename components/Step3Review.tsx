@@ -5,6 +5,7 @@ import { LogbookEntry } from '@/types/logbook';
 interface Step3ReviewProps {
     entries: LogbookEntry[];
     isSubmitting: boolean;
+    hasSubmitted: boolean;
     currentSubmission: number;
     onFileUpload: (index: number, file: File) => void;
     onSubmit: () => void;
@@ -24,6 +25,7 @@ const getModeLabel = (mode: number) => {
 export default function Step3Review({
     entries,
     isSubmitting,
+    hasSubmitted,
     currentSubmission,
     onFileUpload,
     onSubmit,
@@ -126,7 +128,7 @@ export default function Step3Review({
                 <button
                     className="btn-secondary flex-1"
                     onClick={onBack}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || hasSubmitted}
                 >
                     Back
                 </button>

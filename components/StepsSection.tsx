@@ -21,6 +21,7 @@ export default function StepsSection() {
     const [results, setResults] = useState<SubmissionResult[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentSubmission, setCurrentSubmission] = useState(0);
+    const [hasSubmitted, setHasSubmitted] = useState(false);
 
     // Load state from localStorage on mount (only if from Step 3+)
     useEffect(() => {
@@ -175,6 +176,7 @@ export default function StepsSection() {
         }
 
         setIsSubmitting(false);
+        setHasSubmitted(true);
         setStep(4);
     };
 
@@ -213,6 +215,7 @@ export default function StepsSection() {
         setResults([]);
         setIsSubmitting(false);
         setCurrentSubmission(0);
+        setHasSubmitted(false);
     };
 
     return (
@@ -245,6 +248,7 @@ export default function StepsSection() {
                         <Step3Review
                             entries={entries}
                             isSubmitting={isSubmitting}
+                            hasSubmitted={hasSubmitted}
                             currentSubmission={currentSubmission}
                             onFileUpload={handleSupportingFileUpload}
                             onSubmit={handleSubmitAll}
