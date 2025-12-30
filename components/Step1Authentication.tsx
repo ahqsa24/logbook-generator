@@ -8,6 +8,23 @@ interface Step1AuthenticationProps {
 
 export default function Step1Authentication({ onSubmit }: Step1AuthenticationProps) {
     const [aktivitasId, setAktivitasId] = useState('');
+
+    // Helper function to extract Aktivitas ID from URL or return the value as-is
+    const extractAktivitasId = (input: string): string => {
+        const trimmedInput = input.trim();
+
+        // Check if input is a full URL
+        if (trimmedInput.includes('studentportal.ipb.ac.id')) {
+            // Extract ID from URL pattern: .../Index/[ID]
+            const match = trimmedInput.match(/\/Index\/([^/?#]+)/);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+
+        // Return as-is if not a URL (assume it's already just the ID)
+        return trimmedInput;
+    };
     const [authMethod, setAuthMethod] = useState<'login' | 'manual'>('login');
 
     // Login method states
@@ -138,13 +155,13 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                 <input
                     type="text"
                     value={aktivitasId}
-                    onChange={(e) => setAktivitasId(e.target.value)}
-                    placeholder="e.g., b4sAPiIYStKqwF_UFVMTzrjO0wUHqIw27KJW2pQg5tc"
+                    onChange={(e) => setAktivitasId(extractAktivitasId(e.target.value))}
+                    placeholder="Paste full URL or just the ID (e.g., b4sAPiIYStKqwF_UFVMTzrjO0wUHqIw27KJW2pQg5tc)"
                     className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm"
                     disabled={isLoggingIn}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    From URL: .../Index/<strong>[Aktivitas ID]</strong>
+                    💡 You can paste the full URL or just the ID from: .../Index/<strong>[Aktivitas ID]</strong>
                 </p>
             </div>
 

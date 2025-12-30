@@ -29,15 +29,18 @@ export default function ExplanationSection() {
                             <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white font-semibold text-sm mr-4 mt-0.5 flex-shrink-0">
                                 2
                             </span>
-                            <div>
+                            <div className="flex-1 min-w-0">
                                 <strong className="text-lg text-purple-900 dark:text-purple-300">Get your Aktivitas ID</strong>
                                 <p className="text-gray-600 dark:text-gray-400 mt-1">
                                     Navigate to your <strong>Aktivitas page</strong> in Student Portal, then open your logbook.
                                     Copy the ID from the URL after <code className="px-1 py-0.5 bg-purple-100 dark:bg-gray-700 rounded text-xs font-mono">/Index/</code>
                                 </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
-                                    Example: https://studentportal.ipb.ac.id/.../Index/<strong className="text-purple-600 dark:text-purple-400">pGE9-ocaMx91vaHe6dyfEmIrG5-MZFAoLZuMtA-O1c8</strong>
-                                </p>
+                                <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs font-mono break-all">
+                                    <p className="text-gray-500 dark:text-gray-400 mb-1">Example URL:</p>
+                                    <p className="text-gray-700 dark:text-gray-300">
+                                        https://studentportal.ipb.ac.id/.../Index/<strong className="text-purple-600 dark:text-purple-400">pGE9-ocaMx91vaHe6dyfEmIrG5-MZFAoLZuMtA-O1c8</strong>
+                                    </p>
+                                </div>
                             </div>
                         </li>
                         <li className="flex items-start">
