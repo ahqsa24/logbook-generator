@@ -96,11 +96,9 @@ export default function StepsSection() {
 
             // Detect file type and route to appropriate parser
             if (file.name.endsWith('.zip')) {
-                console.log('ZIP file detected, using parseZipFile');
                 const { entries } = await parseZipFile(file);
                 parsedEntries = entries;
             } else {
-                console.log('Excel file detected, using parseExcelFile');
                 parsedEntries = await parseExcelFile(file);
             }
 
@@ -158,9 +156,6 @@ export default function StepsSection() {
                 });
 
                 const result = await response.json();
-                console.log('Backend result:', result);
-                console.log('Result status:', result.status);
-                console.log('Result success:', result.success);
 
                 setResults(prev => [...prev, {
                     row: i,

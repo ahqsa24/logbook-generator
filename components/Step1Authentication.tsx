@@ -112,8 +112,6 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
 
         // Remove trailing semicolon and space
         cookieString = cookieString.trim().replace(/;$/, '');
-
-        console.log('Manual cookies formatted:', cookieString.substring(0, 100) + '...');
         onSubmit(aktivitasId, cookieString);
     };
 

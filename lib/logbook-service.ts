@@ -14,8 +14,6 @@ export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-                console.log('Total rows from Excel:', jsonData.length);
-
                 const entries: LogbookEntry[] = jsonData
                     .filter((row: any) => {
                         // Skip empty rows
@@ -30,15 +28,11 @@ export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
                             IsLuring: Number(row.IsLuring || 0),
                             Lokasi: String(row.Lokasi || ''),
                             Keterangan: String(row.Keterangan || ''),
-                            Dosen: row.Dosen ? String(row.Dosen) : undefined,
+                            Dosen: row.Dosen !== undefined && row.Dosen !== null && String(row.Dosen).trim() !== ''
+                                ? String(row.Dosen).trim()
+                                : undefined,
                             FilePath: row.FilePath ? String(row.FilePath) : undefined,
                         };
-
-                        // Log Dosen field for debugging
-                        if (row.Dosen) {
-                            console.log(`Row ${index + 1} Dosen field:`, row.Dosen, '→', entry.Dosen);
-                        }
-
                         // Log if any required field is missing
                         if (!entry.Waktu || !entry.Keterangan) {
                             console.warn(`Row ${index + 1} missing required fields:`, entry);
@@ -46,15 +40,6 @@ export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
 
                         return entry;
                     });
-
-                console.log('Parsed entries:', entries.length);
-                console.log('First entry:', entries[0]);
-                if (entries[0]?.Dosen) {
-                    console.log('✓ First entry HAS Dosen:', entries[0].Dosen);
-                } else {
-                    console.log('✗ First entry NO Dosen');
-                }
-                console.log('Last entry:', entries[entries.length - 1]);
 
                 resolve(entries);
             } catch (error) {
@@ -134,13 +119,8 @@ export async function parseZipFile(zipFile: File): Promise<{
     entries: LogbookEntry[];
     files: Map<string, File>;
 }> {
-    console.log('=== ZIP PARSING START ===');
-    console.log('ZIP file:', zipFile.name, zipFile.size, 'bytes');
-
     const zip = new JSZip();
     const zipContent = await zip.loadAsync(zipFile);
-
-    console.log('ZIP loaded, files:', Object.keys(zipContent.files).length);
 
     // Find Excel file
     let excelFile: JSZip.JSZipObject | null = null;
@@ -150,7 +130,6 @@ export async function parseZipFile(zipFile: File): Promise<{
         if (!file.dir && (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.csv'))) {
             excelFile = file;
             excelFileName = filename;
-            console.log('Found Excel file:', filename);
             break;
         }
     }
@@ -163,8 +142,6 @@ export async function parseZipFile(zipFile: File): Promise<{
     const excelBlob = await excelFile.async('blob');
     const excelFileObj = new File([excelBlob], excelFileName);
     const entries = await parseExcelFile(excelFileObj);
-
-    console.log('Parsed', entries.length, 'entries from Excel');
 
     // Extract all other files (PDFs, images, etc.)
     const filesMap = new Map<string, File>();
@@ -184,14 +161,11 @@ export async function parseZipFile(zipFile: File): Promise<{
         const mimeType = getMimeType(filename);
         const fileObj = new File([blob], filename.split('/').pop() || filename, { type: mimeType });
 
-        // Store with normalized path as key
         const normalizedPath = normalizePath(filename);
         filesMap.set(normalizedPath, fileObj);
-
-        console.log('Extracted file:', filename, '→', normalizedPath, fileObj.size, 'bytes');
     }
 
-    console.log('Total files extracted:', filesMap.size);
+
 
     // Match FilePath in entries with extracted files
     let matchedCount = 0;
@@ -211,28 +185,22 @@ export async function parseZipFile(zipFile: File): Promise<{
                 for (const [path, file] of filesMap.entries()) {
                     if (path.endsWith(filename)) {
                         matchedFile = file;
-                        console.log(`Matched by filename: ${entry.FilePath} → ${path}`);
                         break;
                     }
                 }
             }
 
             if (matchedFile) {
-                // Convert file to base64 and attach to entry
                 const base64 = await fileToBase64(matchedFile);
                 entry.fileData = base64;
                 entry.fileName = matchedFile.name;
                 matchedCount++;
-                console.log(`✓ Matched: ${entry.FilePath}`);
             } else {
                 missingCount++;
                 console.warn(`✗ Missing: ${entry.FilePath}`);
             }
         }
     }
-
-    console.log(`File matching: ${matchedCount} matched, ${missingCount} missing`);
-    console.log('=== ZIP PARSING COMPLETE ===');
 
     return { entries, files: filesMap };
 }

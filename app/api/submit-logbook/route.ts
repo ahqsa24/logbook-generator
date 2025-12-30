@@ -2,20 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 
 export async function POST(request: NextRequest) {
-    console.log('=== LOGBOOK SUBMISSION START ===');
     try {
         const formData = await request.formData();
         const aktivitasId = formData.get('aktivitasId') as string;
         const cookiesJson = formData.get('cookies') as string;
         const entryJson = formData.get('entry') as string;
         const file = formData.get('file') as File | null;
-
-        console.log('Received data:', {
-            aktivitasId: aktivitasId?.substring(0, 20) + '...',
-            hasCookies: !!cookiesJson,
-            hasEntry: !!entryJson,
-            hasFile: !!file
-        });
 
         if (!aktivitasId || !cookiesJson || !entryJson) {
             return NextResponse.json(
@@ -34,7 +26,7 @@ export async function POST(request: NextRequest) {
             .map(([key, value]) => `${key}=${value}`)
             .join('; ');
 
-        // Step 1: Fetch the modal page to get hidden fields (like Python bot does)
+        // Step 1: Fetch the modal page to get hidden fields
         const modalUrl = `${BASE_URL}/Kegiatan/LogAktivitasKampusMerdeka/Tambah?aktivitasId=${aktivitasId}`;
 
         // Add timeout to prevent hanging
@@ -70,8 +62,7 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        console.log('Hidden fields extracted:', Object.keys(hiddenFields).length, 'fields');
-        console.log('CSRF token present:', !!hiddenFields['__RequestVerificationToken']);
+
 
         // Step 2: Prepare form data with hidden fields + entry data
         const submitFormData = new FormData();
@@ -88,21 +79,27 @@ export async function POST(request: NextRequest) {
         submitFormData.append('JenisLogbookKegiatanKampusMerdekaId', String(entry.JenisLogId));
 
         // Handle Dosen selection (dynamic based on entry.Dosen field)
-        if (entry.Dosen) {
+        if (entry.Dosen && String(entry.Dosen).trim() !== '') {
             // Parse comma-separated dosen numbers: "1", "2", "1,2,3"
-            const dosenNumbers = entry.Dosen.split(',').map((num: string) => parseInt(num.trim()) - 1); // Convert to 0-indexed
-            console.log('Dosen selection:', entry.Dosen, '→ indices:', dosenNumbers);
+            // Convert to string first to handle both string and number types from Excel
+            const dosenString = String(entry.Dosen).trim();
+            const dosenNumbers = dosenString
+                .split(',')
+                .map((num: string) => parseInt(num.trim(), 10)) // Parse as integer
+                .filter((num: number) => !isNaN(num) && num > 0) // Filter out invalid numbers
+                .map((num: number) => num - 1); // Convert to 0-indexed
 
-            dosenNumbers.forEach((index: number) => {
-                if (index >= 0) {
+            if (dosenNumbers.length > 0) {
+                dosenNumbers.forEach((index: number) => {
                     submitFormData.append(`ListDosenPembimbing[${index}].Value`, 'true');
-                    console.log(`✓ Selected dosen index ${index}`);
-                }
-            });
+                });
+            } else {
+                // If parsing failed, default to first dosen
+                submitFormData.append('ListDosenPembimbing[0].Value', 'true');
+            }
         } else {
             // Default: select first dosen if no Dosen field specified
             submitFormData.append('ListDosenPembimbing[0].Value', 'true');
-            console.log('✓ Default: Selected dosen index 0');
         }
 
         // Handle IsLuring (matching Python bot logic)
@@ -174,20 +171,15 @@ export async function POST(request: NextRequest) {
         // Status 200 with no error keywords = success
         if (statusCode === 302) {
             success = true;
-            console.log('✓ Success: Redirect detected (302)');
         } else if (statusCode === 200) {
             const responseText = await response.text();
             const hasError = responseText.toLowerCase().includes('error') ||
                 responseText.toLowerCase().includes('gagal') ||
                 responseText.toLowerCase().includes('failed');
             success = !hasError;
-            console.log(hasError ? '✗ Error keywords found in response' : '✓ Success: No errors in response');
         } else {
             success = false;
-            console.log(`✗ Failed: Unexpected status ${statusCode}`);
         }
-
-        console.log(`Final result: status=${statusCode}, success=${success}`);
 
         return NextResponse.json({
             success,

@@ -1,8 +1,8 @@
 'use client';
 
 const creators = [
-    { name: 'Ahmad Nur Rohim', github: 'https://github.com/anro128', instagram: 'https://instagram.com/ahmadnr_12' },
     { name: 'Ahmad Qaulan Sadida', github: 'https://github.com/ahqsa24', instagram: 'https://instagram.com/adidsadida24' },
+    { name: 'Ahmad Nur Rohim', github: 'https://github.com/anro128', instagram: 'https://instagram.com/ahmadnr_12' },
 ];
 
 export default function LandingSection() {

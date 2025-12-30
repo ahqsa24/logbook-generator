@@ -4,9 +4,6 @@ export async function POST(request: NextRequest) {
     try {
         const { username, password, aktivitasId } = await request.json();
 
-        console.log('=== Login Request Started ===');
-        console.log('Username:', username);
-
         if (!username || !password || !aktivitasId) {
             return NextResponse.json(
                 { success: false, error: 'Missing required fields' },
@@ -57,8 +54,6 @@ export async function POST(request: NextRequest) {
             redirect: 'manual',
         });
 
-        console.log('Login status:', loginResponse.status);
-
         if (loginResponse.status !== 302 && loginResponse.status !== 200) {
             return NextResponse.json(
                 { success: false, error: 'Invalid username or password' },
@@ -107,7 +102,7 @@ export async function POST(request: NextRequest) {
             allCookies[name] = value;
         });
 
-        console.log('All cookies:', Object.keys(allCookies));
+
 
         // Step 5: Send ALL AspNetCore cookies (flexible matching)
         const cookieString = Object.entries(allCookies)
@@ -117,10 +112,6 @@ export async function POST(request: NextRequest) {
             )
             .map(([name, value]) => `${name}=${value}`)
             .join('; ');
-
-        console.log('Sending cookies:', Object.keys(allCookies).filter(n =>
-            n.includes('AspNetCore') || n.includes('Antiforgery')
-        ));
 
         if (!cookieString) {
             return NextResponse.json(

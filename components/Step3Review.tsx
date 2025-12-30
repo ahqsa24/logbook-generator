@@ -84,8 +84,9 @@ export default function Step3Review({
                                                 e.target.files?.[0] &&
                                                 onFileUpload(idx, e.target.files[0])
                                             }
-                                            className="text-xs dark:text-gray-300"
+                                            className="text-xs dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                            disabled={isSubmitting}
                                         />
                                         {entry.fileName && (
                                             <p className="text-xs text-green-600 dark:text-green-400 mt-1">
