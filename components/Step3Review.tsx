@@ -88,7 +88,7 @@ export default function Step3Review({
                                     ⚠️ Validation Errors Detected
                                 </p>
                                 <p className="text-xs text-red-700 dark:text-red-400 mt-1">
-                                    Some entries have validation errors. Please fix them before submitting. Click "Edit" to modify the entry.
+                                    Some entries have validation errors. Please fix them before submitting. Click &quot;Edit&quot; to modify the entry.
                                 </p>
                             </div>
                         </div>
@@ -106,8 +106,8 @@ export default function Step3Review({
                             <div
                                 key={idx}
                                 className={`border rounded-lg p-4 ${validation.isValid
-                                        ? 'border-green-200 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
-                                        : 'border-red-200 dark:border-red-700 bg-red-50/30 dark:bg-red-900/10'
+                                    ? 'border-green-200 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
+                                    : 'border-red-200 dark:border-red-700 bg-red-50/30 dark:bg-red-900/10'
                                     }`}
                             >
                                 {/* Header */}
@@ -286,7 +286,7 @@ export default function Step3Review({
 
                                     {/* Dosen */}
                                     <div>
-                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Dosen (e.g., "1,2")</label>
+                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Dosen (e.g., &quot;1,2&quot;)</label>
                                         {isEditing ? (
                                             <input
                                                 type="text"
