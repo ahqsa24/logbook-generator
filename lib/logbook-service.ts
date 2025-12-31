@@ -2,6 +2,70 @@ import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { LogbookEntry } from '@/types/logbook';
 
+// Helper function to format Excel date serial numbers to DD/MM/YYYY
+function formatExcelDate(value: any): string {
+    // If it's already a string in the correct format, return it
+    if (typeof value === 'string') {
+        // Check if it's already in DD/MM/YYYY format
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
+            return value;
+        }
+        // Check if it's in other date formats and try to parse
+        const parsed = new Date(value);
+        if (!isNaN(parsed.getTime())) {
+            const day = String(parsed.getDate()).padStart(2, '0');
+            const month = String(parsed.getMonth() + 1).padStart(2, '0');
+            const year = parsed.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+        return value;
+    }
+
+    // If it's a number (Excel serial date)
+    if (typeof value === 'number') {
+        // Excel stores dates as days since 1900-01-01 (with a leap year bug)
+        const excelEpoch = new Date(1900, 0, 1);
+        const daysOffset = value - 2; // Adjust for Excel's 1900 leap year bug
+        const date = new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000);
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    // If it's a Date object
+    if (value instanceof Date && !isNaN(value.getTime())) {
+        const day = String(value.getDate()).padStart(2, '0');
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const year = value.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    return String(value || '');
+}
+
+// Helper function to format time values
+function formatExcelTime(value: any): string {
+    // If it's already a string in HH:MM format, return it
+    if (typeof value === 'string') {
+        if (/^\d{1,2}:\d{2}$/.test(value)) {
+            return value;
+        }
+        return value;
+    }
+
+    // If it's a number (Excel time fraction)
+    if (typeof value === 'number' && value < 1) {
+        const totalMinutes = Math.round(value * 24 * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    return String(value || '');
+}
+
 export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -9,10 +73,10 @@ export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
         reader.onload = (e) => {
             try {
                 const data = e.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
+                const workbook = XLSX.read(data, { type: 'binary', cellDates: false });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
 
                 const entries: LogbookEntry[] = jsonData
                     .filter((row: any) => {
@@ -21,9 +85,9 @@ export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
                     })
                     .map((row: any, index: number) => {
                         const entry = {
-                            Waktu: String(row.Waktu || ''),
-                            Tstart: String(row.Tstart || ''),
-                            Tend: String(row.Tend || ''),
+                            Waktu: formatExcelDate(row.Waktu),
+                            Tstart: formatExcelTime(row.Tstart),
+                            Tend: formatExcelTime(row.Tend),
                             JenisLogId: Number(row.JenisLogId || 0),
                             IsLuring: Number(row.IsLuring || 0),
                             Lokasi: String(row.Lokasi || ''),
