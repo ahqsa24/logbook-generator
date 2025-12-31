@@ -37,7 +37,7 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
             return {
                 isValid: false,
                 id: '',
-                error: 'Format URL tidak valid. Gunakan format: .../Index/[Aktivitas ID] / Invalid URL format. Use: .../Index/[Aktivitas ID]'
+                error: 'Invalid URL format. Use: .../Index/[Aktivitas ID]'
             };
         }
     };
@@ -160,7 +160,7 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                     type="text"
                     value={rawInput}
                     onChange={(e) => handleAktivitasIdChange(e.target.value)}
-                    placeholder="Paste full URL or just the ID (e.g., b4sAPiIYStKqwF_UFVMTzrjO0wUHqIw27KJW2pQg5tc)"
+                    placeholder="Paste the full URL from IPB Student Portal (e.g., https://studentportal.ipb.ac.id/.../Index/abc123)"
                     className={`input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm ${urlError ? 'border-red-500 dark:border-red-500' : ''
                         }`}
                     disabled={isLoggingIn}
@@ -171,7 +171,7 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                     </p>
                 ) : (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        💡 You can paste the full URL or just the ID from: .../Index/<strong>[Aktivitas ID]</strong>
+                        💡 Paste the complete URL from your browser's address bar when viewing the logbook activity page
                     </p>
                 )}
                 {aktivitasId && !urlError && (

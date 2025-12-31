@@ -225,7 +225,7 @@ export default function Step3Review({
                                         ) : (
                                             <button
                                                 onClick={() => handleEdit(idx)}
-                                                className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded"
+                                                className={`text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 disabled={isSubmitting}
                                             >
                                                 Edit
