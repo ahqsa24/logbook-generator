@@ -187,22 +187,59 @@ export default function StepsSection() {
     };
 
     const downloadResults = () => {
-        const csvContent = [
-            ['Date', 'Start', 'End', 'Status', 'Message'].join(','),
-            ...results.map(r => [
-                r.entry?.Waktu || '',
-                r.entry?.Tstart || '',
-                r.entry?.Tend || '',
-                r.success ? 'Success' : 'Failed',
-                r.message || r.error || ''
-            ].join(','))
-        ].join('\n');
+        // Helper function to escape CSV fields
+        const escapeCSV = (field: string | undefined | null): string => {
+            if (!field) return '';
+            const str = String(field);
+            // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
 
-        const blob = new Blob([csvContent], { type: 'text/csv' });
+        // Helper functions for labels
+        const getJenisLogLabel = (id: number) => {
+            const labels = { 1: 'Pembimbingan', 2: 'Ujian', 3: 'Kegiatan' };
+            return labels[id as keyof typeof labels] || String(id);
+        };
+
+        const getModeLabel = (mode: number) => {
+            const labels = { 0: 'Online', 1: 'Offline', 2: 'Hybrid' };
+            return labels[mode as keyof typeof labels] || String(mode);
+        };
+
+        // CSV Header matching Step 4 table
+        const headers = ['No', 'Waktu', 'Keterangan', 'Durasi', 'Media', 'Jenis Kegiatan', 'Dosen Penggerak', 'Dokumen', 'Status', 'Error'];
+
+        // CSV Rows
+        const rows = results.map((r, idx) => {
+            const entry = r.entry;
+            const durasi = entry ? `${entry.Tstart} - ${entry.Tend}` : '-';
+            const status = r.status === 'success' ? 'Success' : 'Error';
+            const errorMsg = r.status === 'success' ? '' : (r.error || '');
+
+            return [
+                String(idx + 1), // No
+                escapeCSV(entry?.Waktu), // Waktu
+                escapeCSV(entry?.Keterangan), // Keterangan
+                escapeCSV(durasi), // Durasi
+                escapeCSV(entry ? getModeLabel(entry.IsLuring) : '-'), // Media
+                escapeCSV(entry ? getJenisLogLabel(entry.JenisLogId) : '-'), // Jenis Kegiatan
+                escapeCSV(entry?.Dosen || '-'), // Dosen Penggerak
+                escapeCSV(entry?.fileName || '-'), // Dokumen
+                status, // Status
+                escapeCSV(errorMsg) // Error
+            ].join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'logbook-results.csv';
+        a.download = `logbook-results-${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };

@@ -25,6 +25,78 @@ const getModeLabel = (mode: number) => {
     return labels[mode as keyof typeof labels] || mode;
 };
 
+// Helper: Convert DD/MM/YYYY to YYYY-MM-DD for HTML5 date input
+const formatDateForInput = (ddmmyyyy: string): string => {
+    if (!ddmmyyyy || !ddmmyyyy.includes('/')) return '';
+    const parts = ddmmyyyy.split('/');
+    if (parts.length !== 3) return '';
+    const [day, month, year] = parts;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+};
+
+// Helper: Convert YYYY-MM-DD to DD/MM/YYYY for display
+const formatDateForDisplay = (yyyymmdd: string): string => {
+    if (!yyyymmdd || !yyyymmdd.includes('-')) return yyyymmdd;
+    const parts = yyyymmdd.split('-');
+    if (parts.length !== 3) return yyyymmdd;
+    const [year, month, day] = parts;
+    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+};
+
+// Helper: Auto-format time input (8 → 08:00, 0800 → 08:00, 830 → 08:30)
+const formatTimeInput = (input: string): string => {
+    if (!input) return '';
+
+    // Remove any non-digit characters except colon
+    const cleaned = input.replace(/[^\d:]/g, '');
+
+    // If already in HH:MM format, validate and return
+    if (cleaned.includes(':')) {
+        const parts = cleaned.split(':');
+        if (parts.length === 2) {
+            const hours = parseInt(parts[0], 10);
+            const minutes = parseInt(parts[1], 10);
+            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            }
+        }
+        return '';
+    }
+
+    // Handle numeric-only input
+    const digits = cleaned.replace(/:/g, '');
+
+    if (digits.length === 1 || digits.length === 2) {
+        // Single or double digit: treat as hours (8 → 08:00, 14 → 14:00)
+        const hours = parseInt(digits, 10);
+        if (hours >= 0 && hours <= 23) {
+            return `${hours.toString().padStart(2, '0')}:00`;
+        }
+    } else if (digits.length === 3) {
+        // Three digits: HMM format (830 → 08:30)
+        const hours = parseInt(digits.substring(0, 1), 10);
+        const minutes = parseInt(digits.substring(1, 3), 10);
+        if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+    } else if (digits.length === 4) {
+        // Four digits: HHMM format (0830 → 08:30)
+        const hours = parseInt(digits.substring(0, 2), 10);
+        const minutes = parseInt(digits.substring(2, 4), 10);
+        if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+    }
+
+    return '';
+};
+
+// Helper: Validate select value and return default if invalid
+const validateSelectValue = (value: number, validValues: number[], defaultValue: number): number => {
+    return validValues.includes(value) ? value : defaultValue;
+};
+
+
 export default function Step3Review({
     entries,
     isSubmitting,
@@ -43,8 +115,14 @@ export default function Step3Review({
     const hasErrors = validationResults.some(result => !result.isValid);
 
     const handleEdit = (index: number) => {
+        const entry = { ...entries[index] };
+
+        // Validate and sanitize select values
+        entry.JenisLogId = validateSelectValue(entry.JenisLogId, [1, 2, 3], 1);
+        entry.IsLuring = validateSelectValue(entry.IsLuring, [0, 1, 2], 0);
+
         setEditingIndex(index);
-        setEditedEntry({ ...entries[index] });
+        setEditedEntry(entry);
     };
 
     const handleSave = (index: number) => {
@@ -95,8 +173,8 @@ export default function Step3Review({
                     </div>
                 )}
 
-                {/* Entries List */}
-                <div className="space-y-4">
+                {/* Entries List - Scrollable Container */}
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/50">
                     {entries.map((entry, idx) => {
                         const validation = validationResults[idx];
                         const isEditing = editingIndex === idx;
@@ -175,11 +253,10 @@ export default function Step3Review({
                                         <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Waktu (DD/MM/YYYY)</label>
                                         {isEditing ? (
                                             <input
-                                                type="text"
-                                                value={currentEntry.Waktu}
-                                                onChange={(e) => updateField('Waktu', e.target.value)}
-                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                placeholder="DD/MM/YYYY"
+                                                type="date"
+                                                value={formatDateForInput(currentEntry.Waktu)}
+                                                onChange={(e) => updateField('Waktu', formatDateForDisplay(e.target.value))}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
                                             />
                                         ) : (
                                             <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Waktu}</p>
@@ -191,11 +268,14 @@ export default function Step3Review({
                                         <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Start Time (HH:MM)</label>
                                         {isEditing ? (
                                             <input
-                                                type="text"
+                                                type="time"
                                                 value={currentEntry.Tstart}
                                                 onChange={(e) => updateField('Tstart', e.target.value)}
-                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                placeholder="HH:MM"
+                                                onBlur={(e) => {
+                                                    const formatted = formatTimeInput(e.target.value);
+                                                    if (formatted) updateField('Tstart', formatted);
+                                                }}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
                                             />
                                         ) : (
                                             <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Tstart}</p>
@@ -207,11 +287,14 @@ export default function Step3Review({
                                         <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">End Time (HH:MM)</label>
                                         {isEditing ? (
                                             <input
-                                                type="text"
+                                                type="time"
                                                 value={currentEntry.Tend}
                                                 onChange={(e) => updateField('Tend', e.target.value)}
-                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                placeholder="HH:MM"
+                                                onBlur={(e) => {
+                                                    const formatted = formatTimeInput(e.target.value);
+                                                    if (formatted) updateField('Tend', formatted);
+                                                }}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
                                             />
                                         ) : (
                                             <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Tend}</p>

@@ -8,23 +8,62 @@ interface Step1AuthenticationProps {
 
 export default function Step1Authentication({ onSubmit }: Step1AuthenticationProps) {
     const [aktivitasId, setAktivitasId] = useState('');
+    const [urlError, setUrlError] = useState('');
+    const [rawInput, setRawInput] = useState('');
 
-    // Helper function to extract Aktivitas ID from URL or return the value as-is
-    const extractAktivitasId = (input: string): string => {
+    // Helper function to validate and extract Aktivitas ID from URL
+    const validateAndExtractAktivitasId = (input: string): { isValid: boolean; id: string; error: string } => {
         const trimmedInput = input.trim();
 
-        // Check if input is a full URL
-        if (trimmedInput.includes('studentportal.ipb.ac.id')) {
+        // Empty input is valid (not yet filled)
+        if (!trimmedInput) {
+            return { isValid: true, id: '', error: '' };
+        }
+
+        // Check if input looks like a URL (contains http/https or domain)
+        const isUrl = trimmedInput.includes('http') || trimmedInput.includes('studentportal') || trimmedInput.includes('://');
+
+        if (isUrl) {
+            // Must be from studentportal.ipb.ac.id
+            if (!trimmedInput.includes('studentportal.ipb.ac.id')) {
+                return {
+                    isValid: false,
+                    id: '',
+                    error: 'URL must be from studentportal.ipb.ac.id domain'
+                };
+            }
+
             // Extract ID from URL pattern: .../Index/[ID]
             const match = trimmedInput.match(/\/Index\/([^/?#]+)/);
             if (match && match[1]) {
-                return match[1];
+                return { isValid: true, id: match[1], error: '' };
+            } else {
+                return {
+                    isValid: false,
+                    id: '',
+                    error: 'Format URL tidak valid. Gunakan format: .../Index/[Aktivitas ID] / Invalid URL format. Use: .../Index/[Aktivitas ID]'
+                };
             }
         }
 
-        // Return as-is if not a URL (assume it's already just the ID)
-        return trimmedInput;
+        // If not a URL, assume it's just the ID (valid)
+        return { isValid: true, id: trimmedInput, error: '' };
     };
+
+    // Handle input change with validation
+    const handleAktivitasIdChange = (input: string) => {
+        setRawInput(input);
+        const validation = validateAndExtractAktivitasId(input);
+
+        if (validation.isValid) {
+            setAktivitasId(validation.id);
+            setUrlError('');
+        } else {
+            setAktivitasId('');
+            setUrlError(validation.error);
+        }
+    };
+
     const [authMethod, setAuthMethod] = useState<'login' | 'manual'>('login');
 
     // Login method states
@@ -127,15 +166,27 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                 </label>
                 <input
                     type="text"
-                    value={aktivitasId}
-                    onChange={(e) => setAktivitasId(extractAktivitasId(e.target.value))}
+                    value={rawInput}
+                    onChange={(e) => handleAktivitasIdChange(e.target.value)}
                     placeholder="Paste full URL or just the ID (e.g., b4sAPiIYStKqwF_UFVMTzrjO0wUHqIw27KJW2pQg5tc)"
-                    className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm"
+                    className={`input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm ${urlError ? 'border-red-500 dark:border-red-500' : ''
+                        }`}
                     disabled={isLoggingIn}
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    💡 You can paste the full URL or just the ID from: .../Index/<strong>[Aktivitas ID]</strong>
-                </p>
+                {urlError ? (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                        ❌ {urlError}
+                    </p>
+                ) : (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        💡 You can paste the full URL or just the ID from: .../Index/<strong>[Aktivitas ID]</strong>
+                    </p>
+                )}
+                {aktivitasId && !urlError && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
+                        ✅ Aktivitas ID: {aktivitasId}
+                    </p>
+                )}
             </div>
 
             {/* Method 1: Username & Password */}
