@@ -432,18 +432,18 @@ export default function Step3Review({
 
             <div className="flex gap-4">
                 <button
-                    className="btn-secondary flex-1"
+                    className={`btn-secondary flex-1 ${(isSubmitting || hasSubmitted) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={onBack}
                     disabled={isSubmitting || hasSubmitted}
                 >
                     Back
                 </button>
                 <button
-                    className="btn-primary flex-1"
+                    className={`btn-primary flex-1 ${(isSubmitting || hasErrors) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={onSubmit}
                     disabled={isSubmitting || hasErrors}
                 >
-                    {isSubmitting ? 'Submitting...' : hasErrors ? 'Fix Errors First' : 'Submit All'}
+                    {isSubmitting ? 'Submitting...' : 'Submit All'}
                 </button>
             </div>
         </div>

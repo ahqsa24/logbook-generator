@@ -15,39 +15,31 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
     const validateAndExtractAktivitasId = (input: string): { isValid: boolean; id: string; error: string } => {
         const trimmedInput = input.trim();
 
-        // Empty input is valid (not yet filled)
-        if (!trimmedInput) {
+        // Empty input is valid (no error shown)
+        if (trimmedInput === '') {
             return { isValid: true, id: '', error: '' };
         }
 
-        // Check if input looks like a URL (contains http/https or domain)
-        const isUrl = trimmedInput.includes('http') || trimmedInput.includes('studentportal') || trimmedInput.includes('://');
-
-        if (isUrl) {
-            // Must be from studentportal.ipb.ac.id
-            if (!trimmedInput.includes('studentportal.ipb.ac.id')) {
-                return {
-                    isValid: false,
-                    id: '',
-                    error: 'URL must be from studentportal.ipb.ac.id domain'
-                };
-            }
-
-            // Extract ID from URL pattern: .../Index/[ID]
-            const match = trimmedInput.match(/\/Index\/([^/?#]+)/);
-            if (match && match[1]) {
-                return { isValid: true, id: match[1], error: '' };
-            } else {
-                return {
-                    isValid: false,
-                    id: '',
-                    error: 'Format URL tidak valid. Gunakan format: .../Index/[Aktivitas ID] / Invalid URL format. Use: .../Index/[Aktivitas ID]'
-                };
-            }
+        // MUST be a URL containing studentportal.ipb.ac.id
+        if (!trimmedInput.includes('studentportal.ipb.ac.id')) {
+            return {
+                isValid: false,
+                id: '',
+                error: 'Only links from studentportal.ipb.ac.id are accepted'
+            };
         }
 
-        // If not a URL, assume it's just the ID (valid)
-        return { isValid: true, id: trimmedInput, error: '' };
+        // Extract ID from URL pattern: .../Index/[ID]
+        const match = trimmedInput.match(/\/Index\/([^/?#]+)/);
+        if (match && match[1]) {
+            return { isValid: true, id: match[1], error: '' };
+        } else {
+            return {
+                isValid: false,
+                id: '',
+                error: 'Format URL tidak valid. Gunakan format: .../Index/[Aktivitas ID] / Invalid URL format. Use: .../Index/[Aktivitas ID]'
+            };
+        }
     };
 
     // Handle input change with validation

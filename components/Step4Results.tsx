@@ -26,6 +26,29 @@ export default function Step4Results({
     const successCount = results.filter((r) => r.status === 'success').length;
     const failureCount = results.filter((r) => r.status === 'error').length;
 
+    // Calculate total duration from successful entries
+    const totalDuration = results
+        .filter((r) => r.status === 'success' && r.entry)
+        .reduce((total, r) => {
+            const entry = r.entry!;
+            if (entry.Tstart && entry.Tend) {
+                // Parse time strings (HH:MM format)
+                const [startHour, startMin] = entry.Tstart.split(':').map(Number);
+                const [endHour, endMin] = entry.Tend.split(':').map(Number);
+
+                // Convert to minutes
+                const startMinutes = startHour * 60 + startMin;
+                const endMinutes = endHour * 60 + endMin;
+
+                // Calculate duration in hours
+                const durationMinutes = endMinutes - startMinutes;
+                const durationHours = durationMinutes / 60;
+
+                return total + durationHours;
+            }
+            return total;
+        }, 0);
+
     return (
         <div className="card dark:bg-gray-800 dark:border-gray-700">
             <h2 className="text-2xl font-semibold text-purple-900 dark:text-purple-300 mb-6">
@@ -33,7 +56,7 @@ export default function Step4Results({
             </h2>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 text-center">
                     <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Total Entries</p>
                     <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">
@@ -50,6 +73,12 @@ export default function Step4Results({
                     <p className="text-sm text-red-600 dark:text-red-400 mb-1">Failed</p>
                     <p className="text-3xl font-bold text-red-700 dark:text-red-300">
                         {failureCount}
+                    </p>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4 text-center">
+                    <p className="text-sm text-purple-600 dark:text-purple-400 mb-1">Total Duration</p>
+                    <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">
+                        {totalDuration.toFixed(1)}h
                     </p>
                 </div>
             </div>

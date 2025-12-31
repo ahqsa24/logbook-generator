@@ -186,6 +186,7 @@ export async function POST(request: NextRequest) {
             status: success ? 'success' : 'error',
             statusCode,
             message: success ? 'Submitted successfully' : 'Submission failed',
+            error: success ? undefined : 'Entry not found in logbook list after submission'
         });
     } catch (error) {
         console.error('Error submitting logbook:', error);
