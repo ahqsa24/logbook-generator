@@ -131,6 +131,12 @@ export default function StepsSection() {
         reader.readAsDataURL(file);
     };
 
+    const handleUpdateEntry = (index: number, updatedEntry: LogbookEntry) => {
+        const updatedEntries = [...entries];
+        updatedEntries[index] = updatedEntry;
+        setEntries(updatedEntries);
+    };
+
     const handleSubmitAll = async () => {
         setIsSubmitting(true);
         setResults([]);
@@ -251,6 +257,7 @@ export default function StepsSection() {
                             hasSubmitted={hasSubmitted}
                             currentSubmission={currentSubmission}
                             onFileUpload={handleSupportingFileUpload}
+                            onUpdateEntry={handleUpdateEntry}
                             onSubmit={handleSubmitAll}
                             onBack={() => setStep(2)}
                         />

@@ -235,9 +235,6 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                             <li>Find <strong>.AspNetCore.Cookies</strong></li>
                             <li><strong>Copy ONLY the Value column</strong> (not the Name!)</li>
                         </ol>
-                        <p className="text-xs text-green-700 dark:text-green-300 mt-2 font-semibold">
-                            ✅ Only 1 cookie needed - much simpler!
-                        </p>
                     </div>
 
                     {/* .AspNetCore.Cookies */}
