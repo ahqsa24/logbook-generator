@@ -171,7 +171,7 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                     </p>
                 ) : (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        💡 Paste the complete URL from your browser's address bar when viewing the logbook activity page
+                        💡 Paste the complete URL from your browser&apos;s address bar when viewing the logbook activity page
                     </p>
                 )}
                 {aktivitasId && !urlError && (
@@ -187,7 +187,7 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
                     {/* Security Notice */}
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600 rounded-lg">
                         <div className="flex gap-3">
-                            <div className="text-2xl">🔒</div>
+                            <div className="text-sm">🔒</div>
                             <div className="flex-1">
                                 <h3 className="font-bold text-green-900 dark:text-green-300 mb-1 text-sm">
                                     Your Data is Safe

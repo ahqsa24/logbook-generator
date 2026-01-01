@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { LogbookEntry } from '@/types/logbook';
 
@@ -66,57 +66,68 @@ function formatExcelTime(value: any): string {
     return String(value || '');
 }
 
-export function parseExcelFile(file: File): Promise<LogbookEntry[]> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+export async function parseExcelFile(file: File): Promise<LogbookEntry[]> {
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
 
-        reader.onload = (e) => {
-            try {
-                const data = e.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary', cellDates: false });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+            throw new Error('No worksheet found in Excel file');
+        }
 
-                const entries: LogbookEntry[] = jsonData
-                    .filter((row: any) => {
-                        // Skip empty rows
-                        return row.Waktu || row.Keterangan || row.Lokasi;
-                    })
-                    .map((row: any, index: number) => {
-                        const entry = {
-                            Waktu: formatExcelDate(row.Waktu),
-                            Tstart: formatExcelTime(row.Tstart),
-                            Tend: formatExcelTime(row.Tend),
-                            JenisLogId: Number(row.JenisLogId || 0),
-                            IsLuring: Number(row.IsLuring || 0),
-                            Lokasi: String(row.Lokasi || ''),
-                            Keterangan: String(row.Keterangan || ''),
-                            Dosen: row.Dosen !== undefined && row.Dosen !== null && String(row.Dosen).trim() !== ''
-                                ? String(row.Dosen).trim()
-                                : undefined,
-                            FilePath: row.FilePath ? String(row.FilePath) : undefined,
-                        };
-                        // Log if any required field is missing
-                        if (!entry.Waktu || !entry.Keterangan) {
-                            console.warn(`Row ${index + 1} missing required fields:`, entry);
-                        }
+        const entries: LogbookEntry[] = [];
+        const headers: string[] = [];
 
-                        return entry;
-                    });
+        // Get headers from first row
+        worksheet.getRow(1).eachCell((cell, colNumber) => {
+            headers[colNumber] = String(cell.value || '');
+        });
 
-                resolve(entries);
-            } catch (error) {
-                reject(new Error('Failed to parse Excel file: ' + (error as Error).message));
+        // Process data rows (skip header row)
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+
+            const rowData: any = {};
+            row.eachCell((cell, colNumber) => {
+                const header = headers[colNumber];
+                if (header) {
+                    rowData[header] = cell.value;
+                }
+            });
+
+            // Skip empty rows
+            if (!rowData.Waktu && !rowData.Keterangan && !rowData.Lokasi) {
+                return;
             }
-        };
 
-        reader.onerror = () => {
-            reject(new Error('Failed to read file'));
-        };
+            const entry: LogbookEntry = {
+                Waktu: formatExcelDate(rowData.Waktu),
+                Tstart: formatExcelTime(rowData.Tstart),
+                Tend: formatExcelTime(rowData.Tend),
+                JenisLogId: Number(rowData.JenisLogId || 0),
+                IsLuring: Number(rowData.IsLuring || 0),
+                Lokasi: String(rowData.Lokasi || ''),
+                Keterangan: String(rowData.Keterangan || ''),
+                Dosen: rowData.Dosen !== undefined && rowData.Dosen !== null && String(rowData.Dosen).trim() !== ''
+                    ? String(rowData.Dosen).trim()
+                    : undefined,
+                FilePath: rowData.FilePath ? String(rowData.FilePath) : undefined,
+            };
 
-        reader.readAsBinaryString(file);
-    });
+            // Log if any required field is missing
+            if (!entry.Waktu || !entry.Keterangan) {
+                console.warn(`Row ${rowNumber} missing required fields:`, entry);
+            }
+
+            entries.push(entry);
+        });
+
+        return entries;
+    } catch (error) {
+        throw new Error('Failed to parse Excel file: ' + (error as Error).message);
+    }
 }
 
 export function parseCookieString(cookieStr: string): { [key: string]: string } {

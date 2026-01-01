@@ -69,14 +69,14 @@ export async function POST(request: NextRequest) {
 
         // Add all hidden fields (includes CSRF token)
         Object.entries(hiddenFields).forEach(([key, value]) => {
-            submitFormData.append(key, value);
+            submitFormData.set(key, value);
         });
 
         // Add entry data (matching Python bot exactly)
-        submitFormData.append('Waktu', String(entry.Waktu));
-        submitFormData.append('Tmw', String(entry.Tstart));
-        submitFormData.append('Tsw', String(entry.Tend));
-        submitFormData.append('JenisLogbookKegiatanKampusMerdekaId', String(entry.JenisLogId));
+        submitFormData.set('Waktu', String(entry.Waktu));
+        submitFormData.set('Tmw', String(entry.Tstart));
+        submitFormData.set('Tsw', String(entry.Tend));
+        submitFormData.set('JenisLogbookKegiatanKampusMerdekaId', String(entry.JenisLogId));
 
         // Handle Dosen selection (dynamic based on entry.Dosen field)
         if (entry.Dosen && String(entry.Dosen).trim() !== '') {
@@ -104,19 +104,19 @@ export async function POST(request: NextRequest) {
 
         // Handle IsLuring (matching Python bot logic)
         if (entry.IsLuring === 1) {
-            submitFormData.append('IsLuring', 'true');
+            submitFormData.set('IsLuring', 'true');
         } else if (entry.IsLuring === 0) {
-            submitFormData.append('IsLuring', 'false');
+            submitFormData.set('IsLuring', 'false');
         } else {
-            submitFormData.append('IsLuring', '');
+            submitFormData.set('IsLuring', '');
         }
 
-        submitFormData.append('Lokasi', entry.Lokasi);
-        submitFormData.append('Keterangan', entry.Keterangan);
+        submitFormData.set('Lokasi', entry.Lokasi);
+        submitFormData.set('Keterangan', entry.Keterangan);
 
         // Add file if present
         if (file) {
-            submitFormData.append('File', file);
+            submitFormData.set('File', file);
         }
 
         // Step 3: Submit the form with retry logic

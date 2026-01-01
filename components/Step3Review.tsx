@@ -121,13 +121,44 @@ export default function Step3Review({
         entry.JenisLogId = validateSelectValue(entry.JenisLogId, [1, 2, 3], 1);
         entry.IsLuring = validateSelectValue(entry.IsLuring, [0, 1, 2], 0);
 
+        // Validate and sanitize date - set to today if invalid
+        if (!entry.Waktu || !/^\d{2}\/\d{2}\/\d{4}$/.test(entry.Waktu)) {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+            entry.Waktu = `${day}/${month}/${year}`;
+        }
+
+        // Validate and sanitize time fields - set to empty if invalid (user must fill)
+        if (!entry.Tstart || !/^\d{2}:\d{2}$/.test(entry.Tstart)) {
+            entry.Tstart = '';
+        }
+        if (!entry.Tend || !/^\d{2}:\d{2}$/.test(entry.Tend)) {
+            entry.Tend = '';
+        }
+
         setEditingIndex(index);
         setEditedEntry(entry);
     };
 
     const handleSave = (index: number) => {
         if (editedEntry) {
-            onUpdateEntry(index, editedEntry);
+            // Sanitize data before saving
+            const sanitizedEntry = { ...editedEntry };
+
+            // Ensure time fields are properly formatted (HH:MM)
+            if (sanitizedEntry.Tstart) {
+                const formatted = formatTimeInput(sanitizedEntry.Tstart);
+                if (formatted) sanitizedEntry.Tstart = formatted;
+            }
+            if (sanitizedEntry.Tend) {
+                const formatted = formatTimeInput(sanitizedEntry.Tend);
+                if (formatted) sanitizedEntry.Tend = formatted;
+            }
+
+            console.log('Saving edited entry:', sanitizedEntry);
+            onUpdateEntry(index, sanitizedEntry);
             setEditingIndex(null);
             setEditedEntry(null);
         }
@@ -369,7 +400,7 @@ export default function Step3Review({
 
                                     {/* Dosen */}
                                     <div>
-                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Dosen (e.g., &quot;1,2&quot;)</label>
+                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Dosen (0-indexed, e.g., &quot;0,1&quot;)</label>
                                         {isEditing ? (
                                             <input
                                                 type="text"
