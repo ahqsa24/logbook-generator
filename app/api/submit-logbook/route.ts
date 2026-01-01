@@ -70,14 +70,14 @@ export async function POST(request: NextRequest) {
 
         // Add all hidden fields (includes CSRF token)
         Object.entries(hiddenFields).forEach(([key, value]) => {
-            submitFormData.set(key, value);
+            submitFormData.append(key, value);
         });
 
         // Add entry data (matching Python bot exactly)
-        submitFormData.set('Waktu', String(entry.Waktu));
-        submitFormData.set('Tmw', String(entry.Tstart));
-        submitFormData.set('Tsw', String(entry.Tend));
-        submitFormData.set('JenisLogbookKegiatanKampusMerdekaId', String(entry.JenisLogId));
+        submitFormData.append('Waktu', String(entry.Waktu));
+        submitFormData.append('Tmw', String(entry.Tstart));
+        submitFormData.append('Tsw', String(entry.Tend));
+        submitFormData.append('JenisLogbookKegiatanKampusMerdekaId', String(entry.JenisLogId));
 
         // Handle Dosen selection (dynamic based on entry.Dosen field)
         if (entry.Dosen && String(entry.Dosen).trim() !== '') {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
             // console.log(dosenNumbers);
             if (dosenNumbers.length > 0) {
                 dosenNumbers.forEach((index: number) => {
-                    submitFormData.set(`ListDosenPembimbing[${index}].Value`,'true');
+                    submitFormData.set(`ListDosenPembimbing[${index}].Value`, 'true');
                 });
             } else {
                 // If parsing failed, default to first dosen
@@ -105,15 +105,15 @@ export async function POST(request: NextRequest) {
 
         // Handle IsLuring (matching Python bot logic)
         if (entry.IsLuring === 1) {
-            submitFormData.set('IsLuring', 'true');
+            submitFormData.append('IsLuring', 'true');
         } else if (entry.IsLuring === 0) {
-            submitFormData.set('IsLuring', 'false');
+            submitFormData.append('IsLuring', 'false');
         } else {
-            submitFormData.set('IsLuring', '');
+            submitFormData.append('IsLuring', '');
         }
 
-        submitFormData.set('Lokasi', entry.Lokasi);
-        submitFormData.set('Keterangan', entry.Keterangan);
+        submitFormData.append('Lokasi', entry.Lokasi);
+        submitFormData.append('Keterangan', entry.Keterangan);
 
         // Add file if present
         if (file) {
