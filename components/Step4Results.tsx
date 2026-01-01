@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { SubmissionResult } from '@/types/logbook';
+import { SubmissionResult, Lecturer } from '@/types/logbook';
 
 interface Step4ResultsProps {
     results: SubmissionResult[];
+    lecturers: Lecturer[];
     onDownloadCSV: () => void;
     onDownloadXLSX: () => void;
     onStartOver: () => void;
@@ -22,6 +23,7 @@ const getModeLabel = (mode: number) => {
 
 export default function Step4Results({
     results,
+    lecturers,
     onDownloadCSV,
     onDownloadXLSX,
     onStartOver,
@@ -60,6 +62,26 @@ export default function Step4Results({
         } else if (format === 'xlsx') {
             onDownloadXLSX();
         }
+    };
+
+    // Helper function to convert Dosen IDs to names
+    const getDosenNames = (dosenStr: string | undefined): string => {
+        if (!dosenStr || dosenStr.trim() === '') return '-';
+
+        if (lecturers.length === 0) {
+            // Fallback to numbers if lecturers not loaded
+            return dosenStr;
+        }
+
+        // Parse comma-separated IDs and convert to names
+        return dosenStr
+            .split(',')
+            .map(id => {
+                const lecturerId = parseInt(id.trim(), 10);
+                const lecturer = lecturers.find(l => l.id === lecturerId);
+                return lecturer ? lecturer.name : `Dosen ${id}`;
+            })
+            .join(', ');
     };
 
     return (
@@ -155,7 +177,7 @@ export default function Step4Results({
 
                                     {/* Dosen Penggerak */}
                                     <td className="px-3 py-3 text-gray-900 dark:text-gray-300 align-top whitespace-nowrap">
-                                        {entry?.Dosen || '-'}
+                                        {getDosenNames(entry?.Dosen)}
                                     </td>
 
                                     {/* Dokumen - Clickable */}

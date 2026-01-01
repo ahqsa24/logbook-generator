@@ -61,6 +61,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Check redirect location - if redirected back to login, credentials are wrong
+        const redirectLocation = loginResponse.headers.get('location');
+        if (redirectLocation && (redirectLocation.includes('/Account/Login') || redirectLocation.includes('ReturnUrl'))) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid username or password. Please check your credentials.' },
+                { status: 401 }
+            );
+        }
+
         // Step 3: Collect cookies
         const loginCookies = loginResponse.headers.getSetCookie();
         let allCookies: { [key: string]: string } = {};
@@ -79,7 +88,7 @@ export async function POST(request: NextRequest) {
             allCookies[name] = value;
         });
 
-        // Step 4: Navigate to aktivitas page
+        // Step 4: Navigate to aktivitas page to verify authentication
         const aktivitasUrl = `https://studentportal.ipb.ac.id/Kegiatan/LogAktivitasKampusMerdeka/Index/${aktivitasId}`;
         const cookieHeader = Object.entries(allCookies)
             .map(([name, value]) => `${name}=${value}`)
@@ -93,6 +102,25 @@ export async function POST(request: NextRequest) {
             },
             redirect: 'manual',
         });
+
+        // If redirected to login page, authentication failed
+        if (aktivitasResponse.status === 302) {
+            const aktivitasRedirect = aktivitasResponse.headers.get('location');
+            if (aktivitasRedirect && aktivitasRedirect.includes('/Account/Login')) {
+                return NextResponse.json(
+                    { success: false, error: 'Authentication failed. Invalid credentials or session expired.' },
+                    { status: 401 }
+                );
+            }
+        }
+
+        // If not 200 OK, something went wrong
+        if (aktivitasResponse.status !== 200) {
+            return NextResponse.json(
+                { success: false, error: 'Failed to access student portal. Please verify your credentials.' },
+                { status: 401 }
+            );
+        }
 
         const aktivitasCookies = aktivitasResponse.headers.getSetCookie();
         aktivitasCookies.forEach(cookie => {
@@ -115,8 +143,8 @@ export async function POST(request: NextRequest) {
 
         if (!cookieString) {
             return NextResponse.json(
-                { success: false, error: 'No session cookies found' },
-                { status: 500 }
+                { success: false, error: 'No session cookies found. Login may have failed.' },
+                { status: 401 }
             );
         }
 

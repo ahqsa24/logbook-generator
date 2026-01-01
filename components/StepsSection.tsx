@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LogbookEntry, SubmissionResult, CookieData } from '@/types/logbook';
+import { LogbookEntry, SubmissionResult, CookieData, Lecturer } from '@/types/logbook';
 import { parseExcelFile, parseZipFile, parseCookieString } from '@/lib/logbook-service';
 import { validateLogbookEntry } from '@/lib/validation';
 import StepIndicator from '@/components/StepIndicator';
@@ -22,6 +22,7 @@ export default function StepsSection() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentSubmission, setCurrentSubmission] = useState(0);
     const [hasSubmitted, setHasSubmitted] = useState(false);
+    const [lecturers, setLecturers] = useState<Lecturer[]>([]);
 
     // Load state from localStorage on mount (only if from Step 3+)
     useEffect(() => {
@@ -88,7 +89,28 @@ export default function StepsSection() {
         setAktivitasId(id);
         const parsedCookies = parseCookieString(cookieString);
         setCookies(parsedCookies);
+
+
+        // Move to Step 2 immediately - don't wait for lecturers
         setStep(2);
+
+        // Fetch lecturers in background (non-blocking)
+        fetch('/api/auth/get-lecturers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ aktivitasId: id, cookies: parsedCookies })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.lecturers) {
+                    setLecturers(data.lecturers);
+                    console.log(`Loaded ${data.lecturers.length} lecturers`);
+                }
+            })
+            .catch(error => {
+                console.error('Failed to fetch lecturers:', error);
+                // Continue anyway - lecturers are optional
+            });
     };
 
     const handleFileUpload = async (file: File) => {
@@ -111,8 +133,8 @@ export default function StepsSection() {
             setStep(3);
         } catch (error) {
             const errorMessage = (error as Error).message || 'Unknown error';
-            alert(`Error parsing file: ${errorMessage}\n\nPlease check the file format and try again.`);
-            console.error('File parsing error:', error);
+            // Don't use alert - let Step2FileUpload component handle the error display
+            throw error; // Re-throw to be caught by Step2FileUpload
         }
     };
 
@@ -186,6 +208,26 @@ export default function StepsSection() {
         setStep(4);
     };
 
+    // Helper function to convert Dosen IDs to names (shared by download functions)
+    const getDosenNames = (dosenStr: string | undefined): string => {
+        if (!dosenStr || dosenStr.trim() === '') return '-';
+
+        if (lecturers.length === 0) {
+            // Fallback to numbers if lecturers not loaded
+            return dosenStr;
+        }
+
+        // Parse comma-separated IDs and convert to names
+        return dosenStr
+            .split(',')
+            .map(id => {
+                const lecturerId = parseInt(id.trim(), 10);
+                const lecturer = lecturers.find(l => l.id === lecturerId);
+                return lecturer ? lecturer.name : `Dosen ${id}`;
+            })
+            .join(', ');
+    };
+
     const downloadResults = () => {
         // Helper function to escape CSV fields
         const escapeCSV = (field: string | undefined | null): string => {
@@ -226,7 +268,7 @@ export default function StepsSection() {
                 escapeCSV(durasi), // Durasi
                 escapeCSV(entry ? getModeLabel(entry.IsLuring) : '-'), // Media
                 escapeCSV(entry ? getJenisLogLabel(entry.JenisLogId) : '-'), // Jenis Kegiatan
-                escapeCSV(entry?.Dosen || '-'), // Dosen Penggerak
+                escapeCSV(getDosenNames(entry?.Dosen)), // Dosen Penggerak
                 escapeCSV(entry?.fileName || '-'), // Dokumen
                 status, // Status
                 escapeCSV(errorMsg) // Error
@@ -300,7 +342,7 @@ export default function StepsSection() {
                 durasi: durasi,
                 media: entry ? getModeLabel(entry.IsLuring) : '-',
                 jenisKegiatan: entry ? getJenisLogLabel(entry.JenisLogId) : '-',
-                dosen: entry?.Dosen || '-',
+                dosen: getDosenNames(entry?.Dosen),
                 dokumen: entry?.fileName || '-',
                 status: status,
                 error: errorMsg
@@ -380,6 +422,7 @@ export default function StepsSection() {
                             isSubmitting={isSubmitting}
                             hasSubmitted={hasSubmitted}
                             currentSubmission={currentSubmission}
+                            lecturers={lecturers}
                             onFileUpload={handleSupportingFileUpload}
                             onUpdateEntry={handleUpdateEntry}
                             onSubmit={handleSubmitAll}
@@ -390,6 +433,7 @@ export default function StepsSection() {
                     {step === 4 && (
                         <Step4Results
                             results={results}
+                            lecturers={lecturers}
                             onDownloadCSV={downloadResults}
                             onDownloadXLSX={downloadXLSX}
                             onStartOver={handleStartOver}
