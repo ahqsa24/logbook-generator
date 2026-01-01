@@ -62,6 +62,42 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        // Extract available lecturer count and names from ListDosenPembimbing checkboxes
+        const dosenCheckboxes = $('input[name^="ListDosenPembimbing"]');
+        const maxDosen = dosenCheckboxes.length > 0 ? dosenCheckboxes.length : undefined;
+
+        // Extract lecturer names for better error messages
+        const lecturerNames: string[] = [];
+        dosenCheckboxes.each((index, element) => {
+            const $checkbox = $(element);
+            // Try to find the label or text near the checkbox
+            const label = $checkbox.parent().text().trim() ||
+                $checkbox.next('label').text().trim() ||
+                $checkbox.siblings('label').text().trim() ||
+                `Dosen ${index + 1}`;
+            lecturerNames.push(label);
+        });
+
+        // Validate Dosen input if specified
+        if (entry.Dosen && entry.Dosen.trim() !== '' && maxDosen !== undefined) {
+            const dosenString = String(entry.Dosen).trim();
+            const dosenNumbers = dosenString
+                .split(',')
+                .map((num: string) => parseInt(num.trim(), 10))
+                .filter((num: number) => !isNaN(num));
+
+            for (const num of dosenNumbers) {
+                if (num < 1 || num > maxDosen) {
+                    return NextResponse.json({
+                        success: false,
+                        status: 'error',
+                        error: `Dosen value ${num} is out of range. Available lecturers: 1-${maxDosen}`,
+                        message: `Invalid Dosen input: ${num}. Valid range is 1-${maxDosen}`
+                    }, { status: 400 });
+                }
+            }
+        }
+
         // console.log(hiddenFields);
 
 
@@ -82,17 +118,20 @@ export async function POST(request: NextRequest) {
         // Handle Dosen selection (dynamic based on entry.Dosen field)
         if (entry.Dosen && String(entry.Dosen).trim() !== '') {
             // Parse comma-separated dosen numbers: "1", "2", "1,2,3"
-            // Convert to string first to handle both string and number types from Excel
+            // User input is 1-indexed (1, 2, 3), convert to 0-indexed for portal (0, 1, 2)
             const dosenString = String(entry.Dosen).trim();
             const dosenNumbers = dosenString
                 .split(',')
                 .map((num: string) => parseInt(num.trim(), 10)) // Parse as integer
                 .filter((num: number) => !isNaN(num) && num > 0) // Filter out invalid numbers
-                .map((num: number) => num - 1); // Convert to 0-indexed
-            // console.log(dosenNumbers);
+                .map((num: number) => num - 1); // Convert 1-indexed to 0-indexed
+
+            console.log(`Dosen input: "${dosenString}" -> 0-indexed: [${dosenNumbers.join(', ')}]`);
+
             if (dosenNumbers.length > 0) {
                 dosenNumbers.forEach((index: number) => {
                     submitFormData.set(`ListDosenPembimbing[${index}].Value`, 'true');
+                    console.log(`Set ListDosenPembimbing[${index}].Value = true`);
                 });
             } else {
                 // If parsing failed, default to first dosen

@@ -85,6 +85,28 @@ export async function parseExcelFile(file: File): Promise<LogbookEntry[]> {
             headers[colNumber] = String(cell.value || '');
         });
 
+        // Validate Excel structure - check for required columns
+        const requiredColumns = ['Waktu', 'Tstart', 'Tend', 'JenisLogId', 'IsLuring', 'Lokasi', 'Keterangan'];
+        const optionalColumns = ['Dosen', 'FilePath'];
+        const allExpectedColumns = [...requiredColumns, ...optionalColumns];
+
+        const missingRequired: string[] = [];
+
+        for (const requiredCol of requiredColumns) {
+            if (!headers.includes(requiredCol)) {
+                missingRequired.push(requiredCol);
+            }
+        }
+
+        if (missingRequired.length > 0) {
+            throw new Error(
+                `Excel file is missing required columns: ${missingRequired.join(', ')}.\n\n` +
+                `Required columns: ${requiredColumns.join(', ')}\n` +
+                `Optional columns: ${optionalColumns.join(', ')}\n\n` +
+                `Please ensure your Excel file has all required column headers in the first row.`
+            );
+        }
+
         // Process data rows (skip header row)
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return; // Skip header

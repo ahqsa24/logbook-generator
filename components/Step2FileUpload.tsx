@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface Step2FileUploadProps {
     onFileUpload: (file: File) => void;
     onBack: () => void;
@@ -9,6 +11,26 @@ export default function Step2FileUpload({
     onFileUpload,
     onBack,
 }: Step2FileUploadProps) {
+    const [error, setError] = useState<string | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const handleFileChange = async (file: File | undefined) => {
+        if (!file) return;
+
+        setError(null);
+        setIsProcessing(true);
+
+        try {
+            await onFileUpload(file);
+        } catch (err) {
+            const errorMessage = (err as Error).message || 'Unknown error occurred';
+            setError(errorMessage);
+            console.error('File upload error:', err);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     return (
         <div className="card dark:bg-gray-800 dark:border-gray-700">
             <h2 className="text-2xl font-semibold text-purple-900 dark:text-purple-300 mb-6">
@@ -59,6 +81,31 @@ export default function Step2FileUpload({
                 </div>
             </div>
 
+            {/* Error Display */}
+            {error && (
+                <div className="mb-6 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                        <svg className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="flex-1">
+                            <p className="text-sm font-semibold text-red-900 dark:text-red-300 mb-1">
+                                ⚠️ File Upload Error
+                            </p>
+                            <p className="text-sm text-red-800 dark:text-red-200 whitespace-pre-line">
+                                {error}
+                            </p>
+                            <button
+                                onClick={() => setError(null)}
+                                className="mt-3 text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded transition-colors"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* File Upload Area */}
             <div className="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-12 text-center hover:border-purple-500 dark:hover:border-purple-600 transition-colors duration-200 bg-purple-50 dark:bg-gray-700/50">
                 <input
@@ -66,36 +113,55 @@ export default function Step2FileUpload({
                     accept=".xlsx,.xls,.csv,.zip"
                     onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) onFileUpload(file);
+                        if (file) handleFileChange(file);
                     }}
                     className="hidden"
                     id="excel-upload"
+                    disabled={isProcessing}
                 />
-                <label htmlFor="excel-upload" className="cursor-pointer">
-                    <div className="text-purple-600 dark:text-purple-400 mb-2">
-                        <svg
-                            className="w-16 h-16 mx-auto"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                            />
-                        </svg>
-                    </div>
-                    <p className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Click to upload or drag and drop
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Excel files (.xlsx, .xls, .csv) or ZIP files
-                    </p>
-                    <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
-                        💡 Upload ZIP to auto-include supporting files!
-                    </p>
+                <label htmlFor="excel-upload" className={`cursor-pointer ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {isProcessing ? (
+                        <>
+                            <div className="text-purple-600 dark:text-purple-400 mb-2">
+                                <svg className="w-16 h-16 mx-auto animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </div>
+                            <p className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                Processing file...
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Please wait while we validate your file
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <div className="text-purple-600 dark:text-purple-400 mb-2">
+                                <svg
+                                    className="w-16 h-16 mx-auto"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                    />
+                                </svg>
+                            </div>
+                            <p className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                Click to upload or drag and drop
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Excel files (.xlsx, .xls, .csv) or ZIP files
+                            </p>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                                💡 Upload ZIP to auto-include supporting files!
+                            </p>
+                        </>
+                    )}
                 </label>
             </div>
 

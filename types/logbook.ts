@@ -30,6 +30,12 @@ export interface CookieData {
     [key: string]: string;
 }
 
+export interface Lecturer {
+    id: number;
+    name: string;
+}
+
+
 export interface SubmitLogbookRequest {
     aktivitasId: string;
     cookies: CookieData;

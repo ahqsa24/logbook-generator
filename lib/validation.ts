@@ -32,7 +32,44 @@ export function validateTimeRange(startTime: string, endTime: string): boolean {
     return startTotalMinutes < endTotalMinutes;
 }
 
-export function validateLogbookEntry(entry: any): { isValid: boolean; errors: string[] } {
+export function validateDosenInput(dosenStr: string | undefined, maxDosen?: number): { isValid: boolean; error?: string } {
+    // If no Dosen specified, it's valid (optional field)
+    if (!dosenStr || dosenStr.trim() === '') {
+        return { isValid: true };
+    }
+
+    // If maxDosen is not provided, skip validation
+    if (maxDosen === undefined) {
+        return { isValid: true };
+    }
+
+    try {
+        // Parse comma-separated dosen numbers: "1", "2", "1,2,3"
+        const dosenNumbers = dosenStr
+            .split(',')
+            .map((num: string) => parseInt(num.trim(), 10))
+            .filter((num: number) => !isNaN(num));
+
+        // Check if any number is out of range
+        for (const num of dosenNumbers) {
+            if (num < 1 || num > maxDosen) {
+                return {
+                    isValid: false,
+                    error: `Dosen value ${num} is out of range. Valid range: 1-${maxDosen}`
+                };
+            }
+        }
+
+        return { isValid: true };
+    } catch (error) {
+        return {
+            isValid: false,
+            error: 'Invalid Dosen format. Use comma-separated numbers (e.g., "1,2,3")'
+        };
+    }
+}
+
+export function validateLogbookEntry(entry: any, maxDosen?: number): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     if (!entry.Waktu || !isValidDate(entry.Waktu)) {
@@ -67,8 +104,17 @@ export function validateLogbookEntry(entry: any): { isValid: boolean; errors: st
         errors.push('Keterangan is required');
     }
 
+    // Validate Dosen field if maxDosen is provided
+    if (maxDosen !== undefined) {
+        const dosenValidation = validateDosenInput(entry.Dosen, maxDosen);
+        if (!dosenValidation.isValid && dosenValidation.error) {
+            errors.push(dosenValidation.error);
+        }
+    }
+
     return {
         isValid: errors.length === 0,
         errors,
     };
 }
+

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LogbookEntry } from '@/types/logbook';
+import { LogbookEntry, Lecturer } from '@/types/logbook';
 import { validateLogbookEntry } from '@/lib/validation';
 
 interface Step3ReviewProps {
@@ -9,6 +9,7 @@ interface Step3ReviewProps {
     isSubmitting: boolean;
     hasSubmitted: boolean;
     currentSubmission: number;
+    lecturers: Lecturer[];
     onFileUpload: (index: number, file: File) => void;
     onSubmit: () => void;
     onBack: () => void;
@@ -102,6 +103,7 @@ export default function Step3Review({
     isSubmitting,
     hasSubmitted,
     currentSubmission,
+    lecturers,
     onFileUpload,
     onSubmit,
     onBack,
@@ -109,12 +111,16 @@ export default function Step3Review({
 }: Step3ReviewProps) {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editedEntry, setEditedEntry] = useState<LogbookEntry | null>(null);
+    const [showEditWarning, setShowEditWarning] = useState(false);
 
     // Validate all entries
     const validationResults = entries.map(entry => validateLogbookEntry(entry));
     const hasErrors = validationResults.some(result => !result.isValid);
 
     const handleEdit = (index: number) => {
+        // Show warning when user clicks edit
+        setShowEditWarning(true);
+
         const entry = { ...entries[index] };
 
         // Validate and sanitize select values
@@ -199,6 +205,30 @@ export default function Step3Review({
                                 <p className="text-xs text-red-700 dark:text-red-400 mt-1">
                                     Some entries have validation errors. Please fix them before submitting. Click &quot;Edit&quot; to modify the entry.
                                 </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showEditWarning && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-4">
+                        <div className="flex items-start gap-2">
+                            <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-300">
+                                    Edit Feature Under Development
+                                </p>
+                                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
+                                    The edit feature is still under development. Please ensure your Excel file follows the correct format to avoid errors.
+                                </p>
+                                <button
+                                    onClick={() => setShowEditWarning(false)}
+                                    className="mt-2 text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded transition-colors"
+                                >
+                                    Dismiss
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -398,19 +428,83 @@ export default function Step3Review({
                                         )}
                                     </div>
 
-                                    {/* Dosen */}
-                                    <div>
-                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Dosen (0-indexed, e.g., &quot;0,1&quot;)</label>
+                                    {/* Dosen - Checkbox Group */}
+                                    <div className="md:col-span-2 lg:col-span-3">
+                                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2">
+                                            Dosen Pembimbing {lecturers.length > 0 && `(${lecturers.length} available)`}
+                                        </label>
                                         {isEditing ? (
-                                            <input
-                                                type="text"
-                                                value={currentEntry.Dosen || ''}
-                                                onChange={(e) => updateField('Dosen', e.target.value || undefined)}
-                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                placeholder="Optional"
-                                            />
+                                            lecturers.length > 0 ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                                                    {lecturers.map((lecturer) => {
+                                                        // Parse current Dosen string to check if this lecturer is selected
+                                                        const selectedIds = currentEntry.Dosen
+                                                            ? currentEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10))
+                                                            : [];
+                                                        const isChecked = selectedIds.includes(lecturer.id);
+
+                                                        return (
+                                                            <label
+                                                                key={lecturer.id}
+                                                                className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={(e) => {
+                                                                        const currentIds = currentEntry.Dosen
+                                                                            ? currentEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
+                                                                            : [];
+
+                                                                        let newIds: number[];
+                                                                        if (e.target.checked) {
+                                                                            // Add this lecturer
+                                                                            newIds = [...currentIds, lecturer.id].sort((a, b) => a - b);
+                                                                        } else {
+                                                                            // Remove this lecturer
+                                                                            newIds = currentIds.filter(id => id !== lecturer.id);
+                                                                        }
+
+                                                                        // Update Dosen field as comma-separated string
+                                                                        const dosenString = newIds.length > 0 ? newIds.join(',') : undefined;
+                                                                        updateField('Dosen', dosenString);
+                                                                    }}
+                                                                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                                                />
+                                                                <span className="text-sm text-gray-900 dark:text-gray-200">
+                                                                    {lecturer.name}
+                                                                </span>
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    value={currentEntry.Dosen || ''}
+                                                    onChange={(e) => updateField('Dosen', e.target.value || undefined)}
+                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                    placeholder="Optional (e.g., 1,2)"
+                                                />
+                                            )
                                         ) : (
-                                            <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Dosen || '-'}</p>
+                                            <p className="text-sm text-gray-900 dark:text-gray-200">
+                                                {currentEntry.Dosen ? (
+                                                    lecturers.length > 0 ? (
+                                                        // Show lecturer names if available
+                                                        currentEntry.Dosen.split(',')
+                                                            .map(id => {
+                                                                const lecturerId = parseInt(id.trim(), 10);
+                                                                const lecturer = lecturers.find(l => l.id === lecturerId);
+                                                                return lecturer ? lecturer.name : `Dosen ${id}`;
+                                                            })
+                                                            .join(', ')
+                                                    ) : (
+                                                        // Fallback to numbers if lecturers not loaded
+                                                        currentEntry.Dosen
+                                                    )
+                                                ) : '-'}
+                                            </p>
                                         )}
                                     </div>
 
