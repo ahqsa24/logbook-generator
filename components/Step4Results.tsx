@@ -246,14 +246,12 @@ export default function Step4Results({
                                 onClick={() => handleDownloadFormat('csv')}
                                 className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 flex items-center gap-2"
                             >
-                                <span>📄</span>
                                 <span>CSV Format</span>
                             </button>
                             <button
                                 onClick={() => handleDownloadFormat('xlsx')}
                                 className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-200 flex items-center gap-2"
                             >
-                                <span>📊</span>
                                 <span>Excel (XLSX)</span>
                             </button>
                         </div>

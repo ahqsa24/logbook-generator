@@ -218,7 +218,7 @@ export default function Step3Review({
                             </svg>
                             <div className="flex-1">
                                 <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-300">
-                                    ⚠️ Edit Feature Under Development
+                                    Edit Feature Under Development
                                 </p>
                                 <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
                                     The edit feature is still under development. Please ensure your Excel file follows the correct format to avoid errors.
