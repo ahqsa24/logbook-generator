@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        // console.log(hiddenFields);
 
 
         // Step 2: Prepare form data with hidden fields + entry data
@@ -88,18 +89,18 @@ export async function POST(request: NextRequest) {
                 .map((num: string) => parseInt(num.trim(), 10)) // Parse as integer
                 .filter((num: number) => !isNaN(num) && num > 0) // Filter out invalid numbers
                 .map((num: number) => num - 1); // Convert to 0-indexed
-
+            // console.log(dosenNumbers);
             if (dosenNumbers.length > 0) {
                 dosenNumbers.forEach((index: number) => {
-                    submitFormData.append(`ListDosenPembimbing[${index}].Value`, 'true');
+                    submitFormData.set(`ListDosenPembimbing[${index}].Value`,'true');
                 });
             } else {
                 // If parsing failed, default to first dosen
-                submitFormData.append('ListDosenPembimbing[0].Value', 'true');
+                submitFormData.set('ListDosenPembimbing[0].Value', 'true');
             }
         } else {
             // Default: select first dosen if no Dosen field specified
-            submitFormData.append('ListDosenPembimbing[0].Value', 'true');
+            submitFormData.set('ListDosenPembimbing[0].Value', 'true');
         }
 
         // Handle IsLuring (matching Python bot logic)
@@ -118,6 +119,8 @@ export async function POST(request: NextRequest) {
         if (file) {
             submitFormData.append('File', file);
         }
+
+        // console.log(submitFormData);
 
         // Step 3: Submit the form with retry logic
         const postUrl = `${BASE_URL}/Kegiatan/LogAktivitasKampusMerdeka/Tambah`;
