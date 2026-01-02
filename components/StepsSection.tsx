@@ -447,6 +447,9 @@ export default function StepsSection() {
                     )}
                 </div>
 
+                {/* Comment Section */}
+                <CommentSection />
+
                 {/* Support Section */}
                 <div className="mt-16">
                     <div className="card bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-2 border-gray-200 dark:border-gray-700">
@@ -474,9 +477,6 @@ export default function StepsSection() {
                         </div>
                     </div>
                 </div>
-
-                {/* Comment Section */}
-                <CommentSection />
             </div>
         </section>
     );
