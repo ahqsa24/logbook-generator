@@ -12,6 +12,7 @@ Automated logbook submission tool for IPB Student Portal's Kampus Merdeka progra
 - **Secure**: Credentials never stored, direct communication with IPB Portal
 - **Dark Mode**: Eye-friendly interface with dark mode support
 - **Cross-browser**: Works on all modern browsers
+- **Comment Section**: Interactive feedback system with likes, replies, and admin moderation
 
 ## 📋 Prerequisites
 
@@ -24,10 +25,16 @@ Automated logbook submission tool for IPB Student Portal's Kampus Merdeka progra
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd logbook-generator
+cd logbook-generator-web
 
 # Install dependencies
 npm install
+
+# Create environment file
+cp .env.example .env.local
+
+# Configure admin password (optional)
+# Edit .env.local and set NEXT_PUBLIC_ADMIN_PASSWORD
 
 # Run development server
 npm run dev
@@ -127,7 +134,9 @@ logbook-generator-web/
 │   ├── layout.tsx
 │   └── page.tsx
 ├── components/
+│   ├── CommentSection.tsx       # Interactive comment system
 │   ├── DarkModeToggle.tsx
+│   ├── DonationSection.tsx
 │   ├── ExplanationSection.tsx
 │   ├── LandingSection.tsx
 │   ├── Step1Authentication.tsx  # Hybrid auth component
@@ -141,7 +150,9 @@ logbook-generator-web/
 │   └── validation.ts        # Entry validation
 ├── types/
 │   └── logbook.ts
-└── public/
+├── public/
+├── .env.example             # Environment template
+└── .env.local               # Local environment (gitignored)
 ```
 
 ## 🧪 Development
