@@ -163,7 +163,7 @@ export default function Step3Review({
                 if (formatted) sanitizedEntry.Tend = formatted;
             }
 
-            console.log('Saving edited entry:', sanitizedEntry);
+            // console.log('Saving edited entry:', sanitizedEntry);
             onUpdateEntry(index, sanitizedEntry);
             setEditingIndex(null);
             setEditedEntry(null);

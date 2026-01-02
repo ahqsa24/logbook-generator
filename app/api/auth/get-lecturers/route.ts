@@ -52,8 +52,6 @@ export async function POST(request: NextRequest) {
         // This filters out hidden inputs and other non-checkbox elements
         const dosenCheckboxes = $('input[type="checkbox"][name*="ListDosenPembimbing"][name$=".Value"]');
 
-        console.log(`Found ${dosenCheckboxes.length} lecturer checkboxes`);
-
         dosenCheckboxes.each((index, element) => {
             const $checkbox = $(element);
             const checkboxName = $checkbox.attr('name') || '';

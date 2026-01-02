@@ -104,7 +104,7 @@ export default function StepsSection() {
             .then(data => {
                 if (data.success && data.lecturers) {
                     setLecturers(data.lecturers);
-                    console.log(`Loaded ${data.lecturers.length} lecturers`);
+                    //console.log(`Loaded ${data.lecturers.length} lecturers`);
                 }
             })
             .catch(error => {
