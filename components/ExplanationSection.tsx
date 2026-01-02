@@ -33,7 +33,7 @@ export default function ExplanationSection() {
                                 <strong className="text-lg text-purple-900 dark:text-purple-300">Paste the Aktivitas URL</strong>
                                 <p className="text-gray-600 dark:text-gray-400 mt-1">
                                     Navigate to your <strong>Aktivitas page</strong> in Student Portal, then open your logbook.
-                                    Copy the <strong>full URL</strong> from your browser's address bar and paste it in Step 1.
+                                    Copy the <strong>full URL</strong> from your browser&apos;s address bar and paste it in Step 1.
                                 </p>
                                 <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs font-mono break-all">
                                     <p className="text-gray-500 dark:text-gray-400 mb-1">Example URL:</p>
