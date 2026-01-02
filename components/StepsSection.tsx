@@ -164,6 +164,11 @@ export default function StepsSection() {
         setEntries([...entries, newEntry]);
     };
 
+    const handleDeleteEntry = (index: number) => {
+        const updatedEntries = entries.filter((_, i) => i !== index);
+        setEntries(updatedEntries);
+    };
+
     const handleSubmitAll = async () => {
         setIsSubmitting(true);
         setResults([]);
@@ -431,6 +436,7 @@ export default function StepsSection() {
                             onFileUpload={handleSupportingFileUpload}
                             onUpdateEntry={handleUpdateEntry}
                             onAddEntry={handleAddEntry}
+                            onDeleteEntry={handleDeleteEntry}
                             onSubmit={handleSubmitAll}
                             onBack={() => setStep(2)}
                         />

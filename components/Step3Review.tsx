@@ -15,6 +15,7 @@ interface Step3ReviewProps {
     onBack: () => void;
     onUpdateEntry: (index: number, updatedEntry: LogbookEntry) => void;
     onAddEntry: (newEntry: LogbookEntry) => void;
+    onDeleteEntry: (index: number) => void;
 }
 
 const getJenisLogLabel = (id: number) => {
@@ -141,6 +142,7 @@ export default function Step3Review({
     onBack,
     onUpdateEntry,
     onAddEntry,
+    onDeleteEntry,
 }: Step3ReviewProps) {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editedEntry, setEditedEntry] = useState<LogbookEntry | null>(null);
@@ -159,6 +161,9 @@ export default function Step3Review({
 
     // Sort state - default: newest to oldest (desc)
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+    // Delete confirmation state
+    const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
 
     // Validate all entries
     const validationResults = entries.map(entry => validateLogbookEntry(entry));
@@ -310,6 +315,22 @@ export default function Step3Review({
     const handleCancelAddEntry = () => {
         setIsAddingEntry(false);
         setNewEntry(null);
+    };
+
+    // Delete handlers
+    const handleDeleteClick = (index: number) => {
+        setDeleteConfirmIndex(index);
+    };
+
+    const handleConfirmDelete = () => {
+        if (deleteConfirmIndex !== null) {
+            onDeleteEntry(deleteConfirmIndex);
+            setDeleteConfirmIndex(null);
+        }
+    };
+
+    const handleCancelDelete = () => {
+        setDeleteConfirmIndex(null);
     };
 
     const updateNewEntryField = (field: keyof LogbookEntry, value: any) => {
@@ -838,13 +859,23 @@ export default function Step3Review({
                                                         </button>
                                                     </>
                                                 ) : (
-                                                    <button
-                                                        onClick={() => handleEdit(idx)}
-                                                        className={`text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        Edit
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleEdit(idx)}
+                                                            className={`text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded ${isSubmitting || hasSubmitted ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            disabled={isSubmitting || hasSubmitted}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteClick(idx)}
+                                                            className={`text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded ${isSubmitting || hasSubmitted ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            disabled={isSubmitting || hasSubmitted}
+                                                            title="Delete entry"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>
@@ -1134,6 +1165,50 @@ export default function Step3Review({
                     {isSubmitting ? 'Submitting...' : 'Submit All'}
                 </button>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmIndex !== null && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200 mb-4">
+                            ⚠️ Confirm Delete
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            Are you sure you want to delete this logbook entry?
+                        </p>
+                        {entries[deleteConfirmIndex] && (
+                            <div className="bg-gray-50 dark:bg-gray-700 rounded p-3 mb-4">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-200">
+                                    Entry #{deleteConfirmIndex + 1}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                    Date: {entries[deleteConfirmIndex].Waktu}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                    Description: {entries[deleteConfirmIndex].Keterangan || '-'}
+                                </p>
+                            </div>
+                        )}
+                        <p className="text-xs text-red-600 dark:text-red-400 mb-6">
+                            This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleCancelDelete}
+                                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmDelete}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
