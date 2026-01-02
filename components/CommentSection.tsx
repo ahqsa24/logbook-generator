@@ -19,7 +19,7 @@ interface Comment {
 const COMMENTS_STORAGE_KEY = 'ipb-logbook-comments';
 const LIKES_STORAGE_KEY = 'ipb-logbook-likes';
 const ADMIN_MODE_KEY = 'ipb-admin-mode';
-const ADMIN_PASSWORD = 'adidgantentengpacarnyafara';
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
 type SortOption = 'most-liked' | 'newest' | 'oldest';
 
@@ -27,6 +27,10 @@ export default function CommentSection() {
   const [commentName, setCommentName] = useState('');
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
+
+  // Validation states
+  const [nameError, setNameError] = useState('');
+  const [replyNameError, setReplyNameError] = useState('');
 
   // Reply states
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
@@ -39,6 +43,9 @@ export default function CommentSection() {
 
   // Reply visibility state
   const [viewReplies, setViewReplies] = useState<Set<number>>(new Set());
+
+  // Show more replies state (tracks which comments show all replies)
+  const [showMoreReplies, setShowMoreReplies] = useState<Set<number>>(new Set());
 
   // Admin mode states
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -110,11 +117,8 @@ export default function CommentSection() {
   }, [comments]);
 
   const handleAddComment = () => {
-    // Validate admin name exclusivity
-    if (!isAdminMode && commentName.trim().toLowerCase() === 'admin') {
-      alert('The name "Admin" is reserved. Please choose a different name.');
-      return;
-    }
+    // Validation already handled by real-time check
+    if (nameError) return;
 
     if (commentName.trim() && commentText.trim()) {
       setComments([...comments, {
@@ -126,17 +130,25 @@ export default function CommentSection() {
       }]);
       setCommentName('');
       setCommentText('');
+      setNameError('');
+    }
+  };
+
+  const handleCommentNameChange = (value: string) => {
+    setCommentName(value);
+    // Real-time validation
+    if (!isAdminMode && value.trim().toLowerCase() === 'admin') {
+      setNameError('The name "Admin" is reserved. Please choose a different name.');
+    } else {
+      setNameError('');
     }
   };
 
   const handleAddReply = (commentIndex: number) => {
     const finalReplyName = isAdminMode && !replyName.trim() ? 'Admin' : replyName;
 
-    // Validate admin name exclusivity
-    if (!isAdminMode && finalReplyName.trim().toLowerCase() === 'admin') {
-      alert('The name "Admin" is reserved. Please choose a different name.');
-      return;
-    }
+    // Validation already handled by real-time check
+    if (replyNameError) return;
 
     if (finalReplyName.trim() && replyText.trim()) {
       const updatedComments = [...comments];
@@ -151,7 +163,18 @@ export default function CommentSection() {
       setComments(updatedComments);
       setReplyName('');
       setReplyText('');
+      setReplyNameError('');
       setReplyingTo(null);
+    }
+  };
+
+  const handleReplyNameChange = (value: string) => {
+    setReplyName(value);
+    // Real-time validation
+    if (!isAdminMode && value.trim().toLowerCase() === 'admin') {
+      setReplyNameError('The name "Admin" is reserved. Please choose a different name.');
+    } else {
+      setReplyNameError('');
     }
   };
 
@@ -278,10 +301,19 @@ export default function CommentSection() {
             <input
               type="text"
               value={commentName}
-              onChange={(e) => setCommentName(e.target.value)}
+              onChange={(e) => handleCommentNameChange(e.target.value)}
               placeholder="Your name"
-              className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm"
+              className={`input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm ${nameError ? 'border-red-500 dark:border-red-500' : ''
+                }`}
             />
+            {nameError && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 animate-fadeIn">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {nameError}
+              </p>
+            )}
           </div>
 
           {/* Comment Input */}
@@ -301,7 +333,7 @@ export default function CommentSection() {
           {/* Submit Button */}
           <button
             onClick={handleAddComment}
-            disabled={!commentName.trim() || !commentText.trim()}
+            disabled={!commentName.trim() || !commentText.trim() || !!nameError}
             className="btn-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Post Comment
@@ -392,8 +424,8 @@ export default function CommentSection() {
                                   setViewReplies(newViewReplies);
                                 }}
                                 className={`flex items-center gap-1 text-xs font-medium transition-colors ${viewReplies.has(commentIndex)
-                                  ? 'text-purple-600 dark:text-purple-400'
-                                  : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+                                  ? 'text-blue-600 dark:text-blue-400'
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
                                   }`}
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -429,10 +461,19 @@ export default function CommentSection() {
                             <input
                               type="text"
                               value={isAdminMode && !replyName ? 'Admin' : replyName}
-                              onChange={(e) => setReplyName(e.target.value)}
+                              onChange={(e) => handleReplyNameChange(e.target.value)}
                               placeholder={isAdminMode ? 'Admin' : 'Your name'}
-                              className="w-full px-3 py-2 text-sm rounded-lg border-b-2 border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
+                              className={`w-full px-3 py-2 text-sm rounded-lg border-b-2 ${replyNameError ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                                } bg-transparent text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 transition-colors`}
                             />
+                            {replyNameError && (
+                              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 animate-fadeIn">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {replyNameError}
+                              </p>
+                            )}
                             <textarea
                               value={replyText}
                               onChange={(e) => setReplyText(e.target.value)}
@@ -453,7 +494,7 @@ export default function CommentSection() {
                               </button>
                               <button
                                 onClick={() => handleAddReply(commentIndex)}
-                                disabled={!(isAdminMode || replyName.trim()) || !replyText.trim()}
+                                disabled={!(isAdminMode || replyName.trim()) || !replyText.trim() || !!replyNameError}
                                 className="px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
                                 Reply
@@ -466,44 +507,78 @@ export default function CommentSection() {
                       {/* Display Replies */}
                       {viewReplies.has(commentIndex) && comment.replies && comment.replies.length > 0 && (
                         <div className="space-y-4">
-                          {comment.replies.map((reply, replyIndex) => (
-                            <div key={replyIndex} className="flex gap-3">
-                              {/* Avatar */}
-                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 dark:from-purple-500 dark:to-purple-700 flex items-center justify-center text-white text-xs font-semibold">
-                                {reply.name.charAt(0).toUpperCase()}
-                              </div>
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium text-sm text-gray-900 dark:text-gray-200">
-                                    {reply.name}
-                                  </span>
-                                  {reply.name.toLowerCase() === 'admin' && (
-                                    <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-700">
-                                      Admin
-                                    </span>
-                                  )}
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    {formatDate(reply.timestamp)} {reply.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </span>
+                          {comment.replies
+                            .slice(0, showMoreReplies.has(commentIndex) ? comment.replies.length : 5)
+                            .map((reply, replyIndex) => (
+                              <div key={replyIndex} className="flex gap-3">
+                                {/* Avatar */}
+                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 flex items-center justify-center text-white text-xs font-semibold">
+                                  {reply.name.charAt(0).toUpperCase()}
                                 </div>
 
-                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                  {reply.comment}
-                                </p>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-medium text-sm text-gray-900 dark:text-gray-200">
+                                      {reply.name}
+                                    </span>
+                                    {reply.name.toLowerCase() === 'admin' && (
+                                      <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-700">
+                                        Admin
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                      {formatDate(reply.timestamp)} {reply.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
 
-                                {/* Text-based Delete button for Replies */}
-                                {isAdminMode && (
-                                  <button
-                                    onClick={() => handleDeleteClick(commentIndex, replyIndex)}
-                                    className="mt-1 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                                  >
-                                    Delete
-                                  </button>
-                                )}
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                    {reply.comment}
+                                  </p>
+
+                                  {/* Text-based Delete button for Replies */}
+                                  {isAdminMode && (
+                                    <button
+                                      onClick={() => handleDeleteClick(commentIndex, replyIndex)}
+                                      className="mt-1 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+
+                          {/* Show More Button */}
+                          {comment.replies.length > 5 && (
+                            <button
+                              onClick={() => {
+                                const newShowMore = new Set(showMoreReplies);
+                                if (showMoreReplies.has(commentIndex)) {
+                                  newShowMore.delete(commentIndex);
+                                } else {
+                                  newShowMore.add(commentIndex);
+                                }
+                                setShowMoreReplies(newShowMore);
+                              }}
+                              className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors flex items-center gap-1"
+                            >
+                              {showMoreReplies.has(commentIndex) ? (
+                                <>
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                  </svg>
+                                  Show Less
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                  Show More ({comment.replies.length - 5} more)
+                                </>
+                              )}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
