@@ -160,6 +160,10 @@ export default function StepsSection() {
         setEntries(updatedEntries);
     };
 
+    const handleAddEntry = (newEntry: LogbookEntry) => {
+        setEntries([...entries, newEntry]);
+    };
+
     const handleSubmitAll = async () => {
         setIsSubmitting(true);
         setResults([]);
@@ -426,6 +430,7 @@ export default function StepsSection() {
                             lecturers={lecturers}
                             onFileUpload={handleSupportingFileUpload}
                             onUpdateEntry={handleUpdateEntry}
+                            onAddEntry={handleAddEntry}
                             onSubmit={handleSubmitAll}
                             onBack={() => setStep(2)}
                         />
