@@ -97,6 +97,37 @@ const validateSelectValue = (value: number, validValues: number[], defaultValue:
     return validValues.includes(value) ? value : defaultValue;
 };
 
+// Helper: Validate Dosen input - ensure values are between 1 and maxDosen
+const validateDosenInput = (dosenString: string | undefined, maxDosen: number): string => {
+    if (!dosenString || dosenString.trim() === '') {
+        return ''; // Empty is allowed (optional field)
+    }
+
+    // Parse comma-separated IDs
+    const ids = dosenString
+        .split(',')
+        .map(id => {
+            const parsed = parseInt(id.trim(), 10);
+            return isNaN(parsed) ? null : parsed;
+        })
+        .filter((id): id is number => id !== null);
+
+    if (ids.length === 0) {
+        return '1'; // Default to 1 if no valid IDs
+    }
+
+    // Filter to only valid IDs (1 to maxDosen)
+    const validIds = ids.filter(id => id >= 1 && id <= maxDosen);
+
+    if (validIds.length === 0) {
+        return '1'; // Default to 1 if all IDs are invalid
+    }
+
+    // Sort and remove duplicates
+    const uniqueIds = Array.from(new Set(validIds)).sort((a, b) => a - b);
+    return uniqueIds.join(',');
+};
+
 
 export default function Step3Review({
     entries,
@@ -111,16 +142,12 @@ export default function Step3Review({
 }: Step3ReviewProps) {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editedEntry, setEditedEntry] = useState<LogbookEntry | null>(null);
-    const [showEditWarning, setShowEditWarning] = useState(false);
 
     // Validate all entries
     const validationResults = entries.map(entry => validateLogbookEntry(entry));
     const hasErrors = validationResults.some(result => !result.isValid);
 
     const handleEdit = (index: number) => {
-        // Show warning when user clicks edit
-        setShowEditWarning(true);
-
         const entry = { ...entries[index] };
 
         // Validate and sanitize select values
@@ -174,6 +201,10 @@ export default function Step3Review({
                 }
             }
 
+            // Validate Dosen field - ensure values are between 1 and lecturers.length
+            const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
+            sanitizedEntry.Dosen = validateDosenInput(sanitizedEntry.Dosen, maxDosen);
+
             // console.log('Saving edited entry:', sanitizedEntry);
             onUpdateEntry(index, sanitizedEntry);
             setEditingIndex(null);
@@ -216,30 +247,6 @@ export default function Step3Review({
                                 <p className="text-xs text-red-700 dark:text-red-400 mt-1">
                                     Some entries have validation errors. Please fix them before submitting. Click &quot;Edit&quot; to modify the entry.
                                 </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {showEditWarning && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-4">
-                        <div className="flex items-start gap-2">
-                            <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <div className="flex-1">
-                                <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-300">
-                                    Edit Feature Under Development
-                                </p>
-                                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
-                                    The edit feature is still under development. Please ensure your Excel file follows the correct format to avoid errors.
-                                </p>
-                                <button
-                                    onClick={() => setShowEditWarning(false)}
-                                    className="mt-2 text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded transition-colors"
-                                >
-                                    Dismiss
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -494,8 +501,14 @@ export default function Step3Review({
                                                 <input
                                                     type="text"
                                                     value={currentEntry.Dosen || ''}
-                                                    onChange={(e) => updateField('Dosen', e.target.value)}
-                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                    onChange={(e) => updateField('Dosen', e.target.value)}                                                    onBlur={(e) => {
+                                                        // Validate Dosen input on blur
+                                                        const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
+                                                        const validated = validateDosenInput(e.target.value, maxDosen);
+                                                        if (validated !== e.target.value) {
+                                                            updateField('Dosen', validated);
+                                                        }
+                                                    }}                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
                                                     placeholder="Optional (e.g., 1,2)"
                                                 />
                                             )
