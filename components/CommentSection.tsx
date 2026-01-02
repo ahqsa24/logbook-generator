@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 
 interface Reply {
+  id: string;
   name: string;
   comment: string;
   timestamp: Date;
 }
 
 interface Comment {
+  id: string;
   name: string;
   comment: string;
   timestamp: Date;
@@ -33,19 +35,19 @@ export default function CommentSection() {
   const [replyNameError, setReplyNameError] = useState('');
 
   // Reply states
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyName, setReplyName] = useState('');
   const [replyText, setReplyText] = useState('');
 
   // Like states
-  const [likedComments, setLikedComments] = useState<Set<number>>(new Set());
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortOption>('most-liked');
 
   // Reply visibility state
-  const [viewReplies, setViewReplies] = useState<Set<number>>(new Set());
+  const [viewReplies, setViewReplies] = useState<Set<string>>(new Set());
 
   // Show more replies state (tracks which comments show all replies)
-  const [showMoreReplies, setShowMoreReplies] = useState<Set<number>>(new Set());
+  const [showMoreReplies, setShowMoreReplies] = useState<Set<string>>(new Set());
 
   // Admin mode states
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -57,7 +59,8 @@ export default function CommentSection() {
 
   // Delete modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ commentIndex: number; replyIndex?: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ commentId: string; replyId?: string } | null>(null);
+
 
   // Load comments and admin mode from localStorage on mount
   useEffect(() => {
@@ -69,10 +72,12 @@ export default function CommentSection() {
           const parsed = JSON.parse(saved);
           const commentsWithDates = parsed.map((c: any) => ({
             ...c,
+            id: c.id || `comment-${Date.now()}-${Math.random()}`,
             timestamp: new Date(c.timestamp),
             likes: c.likes || 0,
             replies: c.replies?.map((r: any) => ({
               ...r,
+              id: r.id || `reply-${Date.now()}-${Math.random()}`,
               timestamp: new Date(r.timestamp)
             })) || []
           }));
@@ -122,6 +127,7 @@ export default function CommentSection() {
 
     if (commentName.trim() && commentText.trim()) {
       setComments([...comments, {
+        id: `comment-${Date.now()}-${Math.random()}`,
         name: commentName,
         comment: commentText,
         timestamp: new Date(),
@@ -144,21 +150,29 @@ export default function CommentSection() {
     }
   };
 
-  const handleAddReply = (commentIndex: number) => {
+  const handleAddReply = (commentId: string) => {
     const finalReplyName = isAdminMode && !replyName.trim() ? 'Admin' : replyName;
 
     // Validation already handled by real-time check
     if (replyNameError) return;
 
     if (finalReplyName.trim() && replyText.trim()) {
-      const updatedComments = [...comments];
-      if (!updatedComments[commentIndex].replies) {
-        updatedComments[commentIndex].replies = [];
-      }
-      updatedComments[commentIndex].replies!.push({
-        name: finalReplyName,
-        comment: replyText,
-        timestamp: new Date()
+      const updatedComments = comments.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            replies: [
+              ...(c.replies || []),
+              {
+                id: `reply-${Date.now()}-${Math.random()}`,
+                name: finalReplyName,
+                comment: replyText,
+                timestamp: new Date()
+              }
+            ]
+          };
+        }
+        return c;
       });
       setComments(updatedComments);
       setReplyName('');
@@ -195,22 +209,26 @@ export default function CommentSection() {
     localStorage.removeItem(ADMIN_MODE_KEY);
   };
 
-  const handleDeleteClick = (commentIndex: number, replyIndex?: number) => {
-    setDeleteTarget({ commentIndex, replyIndex });
+  const handleDeleteClick = (commentId: string, replyId?: string) => {
+    setDeleteTarget({ commentId, replyId });
     setShowDeleteModal(true);
   };
 
   const handleConfirmDelete = () => {
     if (deleteTarget) {
-      const updatedComments = [...comments];
-
-      if (deleteTarget.replyIndex !== undefined) {
-        // Delete reply
-        updatedComments[deleteTarget.commentIndex].replies?.splice(deleteTarget.replyIndex, 1);
-      } else {
-        // Delete comment
-        updatedComments.splice(deleteTarget.commentIndex, 1);
-      }
+      const updatedComments = deleteTarget.replyId
+        ? // Delete reply
+          comments.map(c => {
+            if (c.id === deleteTarget.commentId) {
+              return {
+                ...c,
+                replies: c.replies?.filter(r => r.id !== deleteTarget.replyId)
+              };
+            }
+            return c;
+          })
+        : // Delete comment
+          comments.filter(c => c.id !== deleteTarget.commentId);
 
       setComments(updatedComments);
       setShowDeleteModal(false);
@@ -218,25 +236,39 @@ export default function CommentSection() {
     }
   };
 
-  const handleLike = (commentIndex: number) => {
-    if (likedComments.has(commentIndex)) {
+  const handleLike = (commentId: string) => {
+    if (likedComments.has(commentId)) {
       // Unlike
-      const updatedComments = [...comments];
-      updatedComments[commentIndex].likes = (updatedComments[commentIndex].likes || 0) - 1;
+      const updatedComments = comments.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            likes: Math.max(0, (c.likes || 0) - 1)
+          };
+        }
+        return c;
+      });
       setComments(updatedComments);
 
       const newLiked = new Set(likedComments);
-      newLiked.delete(commentIndex);
+      newLiked.delete(commentId);
       setLikedComments(newLiked);
       localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify([...newLiked]));
     } else {
       // Like
-      const updatedComments = [...comments];
-      updatedComments[commentIndex].likes = (updatedComments[commentIndex].likes || 0) + 1;
+      const updatedComments = comments.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            likes: (c.likes || 0) + 1
+          };
+        }
+        return c;
+      });
       setComments(updatedComments);
 
       const newLiked = new Set(likedComments);
-      newLiked.add(commentIndex);
+      newLiked.add(commentId);
       setLikedComments(newLiked);
       localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify([...newLiked]));
     }
@@ -360,10 +392,9 @@ export default function CommentSection() {
             </div>
             {/* Scrollable Comments Container - Max 5 comments visible */}
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
-              {getSortedComments().map((comment, index) => {
-                const commentIndex = comments.findIndex(c => c === comment);
+              {getSortedComments().map((comment) => {
                 return (
-                  <div key={commentIndex} className="pb-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                  <div key={comment.id} className="pb-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
                     {/* Main Comment - Horizontal Layout */}
                     <div className="flex gap-3">
                       {/* Avatar */}
@@ -399,13 +430,13 @@ export default function CommentSection() {
                             <div className="flex items-center gap-4">
                               {/* Love Button */}
                               <button
-                                onClick={() => handleLike(commentIndex)}
-                                className={`flex items-center gap-1 text-xs font-medium transition-colors ${likedComments.has(commentIndex)
+                                onClick={() => handleLike(comment.id)}
+                                className={`flex items-center gap-1 text-xs font-medium transition-colors ${likedComments.has(comment.id)
                                   ? 'text-red-600 dark:text-red-400'
                                   : 'text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400'
                                   }`}
                               >
-                                <svg className="w-4 h-4" fill={likedComments.has(commentIndex) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4" fill={likedComments.has(comment.id) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                 </svg>
                                 {comment.likes || 0}
@@ -414,16 +445,16 @@ export default function CommentSection() {
                               {/* Reply Button */}
                               <button
                                 onClick={() => {
-                                  const newViewReplies = new Set<number>();
-                                  if (!viewReplies.has(commentIndex)) {
-                                    newViewReplies.add(commentIndex);
-                                    setReplyingTo(commentIndex);
+                                  const newViewReplies = new Set<string>();
+                                  if (!viewReplies.has(comment.id)) {
+                                    newViewReplies.add(comment.id);
+                                    setReplyingTo(comment.id);
                                   } else {
                                     setReplyingTo(null);
                                   }
                                   setViewReplies(newViewReplies);
                                 }}
-                                className={`flex items-center gap-1 text-xs font-medium transition-colors ${viewReplies.has(commentIndex)
+                                className={`flex items-center gap-1 text-xs font-medium transition-colors ${viewReplies.has(comment.id)
                                   ? 'text-blue-600 dark:text-blue-400'
                                   : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
                                   }`}
@@ -439,7 +470,7 @@ export default function CommentSection() {
                           {/* Delete Button - Top Right */}
                           {isAdminMode && (
                             <button
-                              onClick={() => handleDeleteClick(commentIndex)}
+                              onClick={() => handleDeleteClick(comment.id)}
                               className="ml-auto text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0"
                               title="Delete comment"
                             >
@@ -455,7 +486,7 @@ export default function CommentSection() {
                     {/* Reply Section - Below Main Comment */}
                     <div className="ml-14 mt-3 transition-all duration-300 ease-in-out">
                       {/* Reply Form */}
-                      {replyingTo === commentIndex && (
+                      {replyingTo === comment.id && (
                         <div className="mb-4">
                           <div className="space-y-3">
                             <input
@@ -493,7 +524,7 @@ export default function CommentSection() {
                                 Cancel
                               </button>
                               <button
-                                onClick={() => handleAddReply(commentIndex)}
+                                onClick={() => handleAddReply(comment.id)}
                                 disabled={!(isAdminMode || replyName.trim()) || !replyText.trim() || !!replyNameError}
                                 className="px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
@@ -505,12 +536,12 @@ export default function CommentSection() {
                       )}
 
                       {/* Display Replies */}
-                      {viewReplies.has(commentIndex) && comment.replies && comment.replies.length > 0 && (
+                      {viewReplies.has(comment.id) && comment.replies && comment.replies.length > 0 && (
                         <div className="space-y-4">
                           {comment.replies
-                            .slice(0, showMoreReplies.has(commentIndex) ? comment.replies.length : 5)
-                            .map((reply, replyIndex) => (
-                              <div key={replyIndex} className="flex gap-3">
+                            .slice(0, showMoreReplies.has(comment.id) ? comment.replies.length : 5)
+                            .map((reply) => (
+                              <div key={reply.id} className="flex gap-3">
                                 {/* Avatar */}
                                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 flex items-center justify-center text-white text-xs font-semibold">
                                   {reply.name.charAt(0).toUpperCase()}
@@ -538,7 +569,7 @@ export default function CommentSection() {
                                   {/* Text-based Delete button for Replies */}
                                   {isAdminMode && (
                                     <button
-                                      onClick={() => handleDeleteClick(commentIndex, replyIndex)}
+                                      onClick={() => handleDeleteClick(comment.id, reply.id)}
                                       className="mt-1 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                                     >
                                       Delete
@@ -553,16 +584,16 @@ export default function CommentSection() {
                             <button
                               onClick={() => {
                                 const newShowMore = new Set(showMoreReplies);
-                                if (showMoreReplies.has(commentIndex)) {
-                                  newShowMore.delete(commentIndex);
+                                if (showMoreReplies.has(comment.id)) {
+                                  newShowMore.delete(comment.id);
                                 } else {
-                                  newShowMore.add(commentIndex);
+                                  newShowMore.add(comment.id);
                                 }
                                 setShowMoreReplies(newShowMore);
                               }}
                               className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors flex items-center gap-1"
                             >
-                              {showMoreReplies.has(commentIndex) ? (
+                              {showMoreReplies.has(comment.id) ? (
                                 <>
                                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -649,7 +680,7 @@ export default function CommentSection() {
                 ⚠️ Confirm Delete
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Are you sure you want to delete this {deleteTarget?.replyIndex !== undefined ? 'reply' : 'comment'}? This action cannot be undone.
+                Are you sure you want to delete this {deleteTarget?.replyId !== undefined ? 'reply' : 'comment'}? This action cannot be undone.
               </p>
               <div className="flex gap-3">
                 <button
