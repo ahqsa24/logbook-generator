@@ -100,7 +100,6 @@ export async function POST(request: NextRequest) {
 
         // console.log(hiddenFields);
 
-
         // Step 2: Prepare form data with hidden fields + entry data
         const submitFormData = new FormData();
 
@@ -126,20 +125,36 @@ export async function POST(request: NextRequest) {
                 .filter((num: number) => !isNaN(num) && num > 0) // Filter out invalid numbers
                 .map((num: number) => num - 1); // Convert 1-indexed to 0-indexed
 
-            console.log(`Dosen input: "${dosenString}" -> 0-indexed: [${dosenNumbers.join(', ')}]`);
+            // console.log(`📋 Dosen input: "${dosenString}" -> 0-indexed: [${dosenNumbers.join(', ')}]`);
+            // console.log(`📊 Total available lecturers: ${maxDosen}`);
 
             if (dosenNumbers.length > 0) {
+                // STEP 1: Initialize all checkboxes to false first (if we know maxDosen)
+                // This ensures the form structure matches the portal's expectations
+                if (maxDosen !== undefined) {
+                    for (let i = 0; i < maxDosen; i++) {
+                        submitFormData.set(`ListDosenPembimbing[${i}].Value`, 'false');
+                    }
+                    // console.log(`✓ Initialized ${maxDosen} dosen checkboxes to false`);
+                }
+
+                // STEP 2: Set selected ones to true
+                // Using .set() is safe now because we've initialized all checkboxes
                 dosenNumbers.forEach((index: number) => {
                     submitFormData.set(`ListDosenPembimbing[${index}].Value`, 'true');
-                    console.log(`Set ListDosenPembimbing[${index}].Value = true`);
+                    // console.log(`✓ Set ListDosenPembimbing[${index}].Value = true`);
                 });
+
+                // console.log(`✅ Total dosen selected: ${dosenNumbers.length}`);
             } else {
                 // If parsing failed, default to first dosen
                 submitFormData.set('ListDosenPembimbing[0].Value', 'true');
+                // console.log('⚠️ Parsing failed, defaulting to first dosen');
             }
         } else {
             // Default: select first dosen if no Dosen field specified
             submitFormData.set('ListDosenPembimbing[0].Value', 'true');
+            // console.log('ℹ️ No dosen specified, defaulting to first dosen');
         }
 
         // Handle IsLuring (matching Python bot logic)
