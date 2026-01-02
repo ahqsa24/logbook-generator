@@ -1,20 +1,17 @@
 # IPB Logbook Generator
 
-Automated logbook submission tool for IPB Student Portal's Kampus Merdeka program.
+Automated platform to easily fill and submit logbooks to IPB Kampus Merdeka Portal.
 
-## 🚀 Features
+## ✨ Key Features
 
-- **Hybrid Authentication**: Choose between username/password login or manual cookie input
-- **ZIP Upload Support**: Upload Excel + supporting files in one ZIP package
-- **Dosen Selection**: Automatically select lecturers using simple numbering (1, 2, 3)
-- **Batch Processing**: Upload multiple logbook entries at once via Excel
-- **Real-time Progress**: Track submission status for each entry
-- **Secure**: Credentials never stored, direct communication with IPB Portal
-- **Dark Mode**: Eye-friendly interface with dark mode support
-- **Cross-browser**: Works on all modern browsers
-- **Comment Section**: Interactive feedback system with likes, replies, and admin moderation
+- **Flexible Login**: Username/Password or Manual Cookie
+- **ZIP Upload**: Upload Excel + supporting files at once
+- **Batch Processing**: Submit multiple logbook entries at once
+- **Auto Attach Files**: Files automatically attached based on Excel
+- **Dark Mode**: Dark theme for comfortable viewing
+- **Secure**: Data never stored on server
 
-## 📋 Prerequisites
+## 📋 Requirements
 
 - Node.js 18+ and npm
 - IPB Student Portal account
@@ -23,18 +20,15 @@ Automated logbook submission tool for IPB Student Portal's Kampus Merdeka progra
 ## 🛠️ Installation
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone <repository-url>
 cd logbook-generator-web
 
 # Install dependencies
 npm install
 
-# Create environment file
+# Setup environment
 cp .env.example .env.local
-
-# Configure admin password (optional)
-# Edit .env.local and set NEXT_PUBLIC_ADMIN_PASSWORD
 
 # Run development server
 npm run dev
@@ -43,84 +37,73 @@ npm run dev
 npm run build
 ```
 
-## 📖 Usage
+## 📖 How to Use
 
-### Step 1: Authentication
+### Step 1: Login
 
 Choose one of two methods:
 
-#### Method 1: Username & Password (Recommended)
+**Method 1: Username & Password (Recommended)**
 1. Enter your Aktivitas ID
 2. Enter your IPB username
 3. Enter your IPB password
 4. Click "Login & Continue"
 
-#### Method 2: Manual Cookies (Advanced)
+**Method 2: Manual Cookie (Advanced)**
 1. Login to IPB Student Portal
-2. Open DevTools (F12) → Application tab
+2. Open DevTools (CTRL + SHIFT + i) → Application tab
 3. Navigate to Cookies → studentportal.ipb.ac.id
-4. Copy the Value of these 3 cookies:
-   - `AspNetCore.Session`
-   - `.AspNetCore.Cookies`
-   - `.AspNetCore.Antiforgery`
-5. Paste into respective fields
+4. Copy value from `.AspNetCore.Cookies`
+5. Paste to form
 
 ### Step 2: Upload File
 
-#### Option 1: Excel Only
-Upload `.xlsx`, `.xls`, or `.csv` file. Add supporting files manually in Step 3.
+**Option 1: Excel File**
+Upload `.xlsx`, `.xls`, or `.csv` file
 
-#### Option 2: ZIP Package (Recommended)
-Create a folder structure:
+**Option 2: ZIP Package (Recommended)**
+Folder structure:
 ```
-📁 Logbook_Batch/
-  ├── 📄 logbook.xlsx
-  └── 📁 files/
-      ├── bukti1.pdf
-      ├── foto1.jpg
-      └── dokumen1.pdf
+Logbook_Batch/
+├── logbook.xlsx
+└── files/
+    ├── evidence1.pdf
+    ├── photo1.jpg
+    └── document1.pdf
 ```
 
-Zip the folder and upload. Files will be automatically attached based on `FilePath` column!
+Zip and upload. Files will be automatically attached!
 
 ### Excel Format
 
-| Column | Format | Description |
-|--------|--------|-------------|
-| Waktu | DD/MM/YYYY | Date of activity (e.g., 25/08/2025) |
-| Tstart | HH:MM | Start time (e.g., 08:00) |
-| Tend | HH:MM | End time (e.g., 16:00) |
-| JenisLogId | 1, 2, or 3 | Activity type: 1=Pembimbingan, 2=Ujian, 3=Kegiatan |
-| IsLuring | 0, 1, or 2 | Mode: 0=Online, 1=Offline, 2=Hybrid |
-| Lokasi | Text | Location (e.g., "Zoom Meeting", "IPB Campus") |
-| Keterangan | Text | Activity description |
-| Dosen | Text | Lecturer selection: "1", "2", "1,2", "1,2,3" |
-| FilePath | Text | Path to supporting file: "files/bukti1.pdf" |
-
-**Example:**
-
-| Waktu | Tstart | Tend | JenisLogId | IsLuring | Lokasi | Keterangan | Dosen | FilePath |
-|-------|--------|------|------------|----------|--------|------------|-------|----------|
-| 25/08/2025 | 08:00 | 16:00 | 1 | 0 | Online | Pembimbingan | 1 | files/bukti1.pdf |
-| 26/08/2025 | 08:00 | 16:00 | 2 | 1 | IPB | Ujian | 2 | files/bukti2.pdf |
-| 27/08/2025 | 08:00 | 16:00 | 1 | 2 | Hybrid | Meeting | 1,2 | |
+| Column | Example | Description |
+|--------|---------|-------------|
+| Waktu | 25/08/2025 | Activity date |
+| Tstart | 08:00 | Start time |
+| Tend | 16:00 | End time |
+| JenisLogId | 1 | 1=Guidance, 2=Exam, 3=Activity |
+| IsLuring | 0 | 0=Online, 1=Offline, 2=Hybrid |
+| Lokasi | Zoom Meeting | Location |
+| Keterangan | Meeting with advisor | Short description |
+| Dosen | 1 | Lecturer number (1, 2, or 1,2) |
+| FilePath | files/evidence1.pdf | File path in ZIP |
 
 ### Step 3: Review & Submit
 
-1. Review your entries
-2. Files from ZIP are automatically attached (✓ matched, ✗ missing)
-3. Upload additional files if needed
+1. Review logbook entries
+2. Files from ZIP automatically attached
+3. Add more files if needed
 4. Click "Submit All"
 5. Wait for completion
 6. Download results as CSV
 
 ## 🔒 Security
 
-- **No Storage**: Credentials are never stored on our servers
-- **Direct Communication**: All requests go directly to IPB Portal
-- **HTTPS**: All communication is encrypted
-- **Client-side Processing**: Excel and ZIP parsing happen in your browser
-- **Temporary Sessions**: Cookies are only used for the current session
+- Data never stored on server
+- All requests go directly to IPB Portal
+- HTTPS encryption for all communication
+- File parsing happens in your browser
+- Session only used for current submission
 
 ## 🏗️ Project Structure
 
@@ -128,127 +111,69 @@ Zip the folder and upload. Files will be automatically attached based on `FilePa
 logbook-generator-web/
 ├── app/
 │   ├── api/
-│   │   ├── auth/login/      # Username/password authentication
-│   │   └── submit-logbook/  # Logbook submission endpoint
+│   │   ├── auth/login/      # Login endpoint
+│   │   └── submit-logbook/  # Submit endpoint
 │   ├── globals.css
 │   ├── layout.tsx
 │   └── page.tsx
 ├── components/
-│   ├── CommentSection.tsx       # Interactive comment system
+│   ├── CommentSection.tsx       # Comment system
 │   ├── DarkModeToggle.tsx
-│   ├── DonationSection.tsx
 │   ├── ExplanationSection.tsx
 │   ├── LandingSection.tsx
-│   ├── Step1Authentication.tsx  # Hybrid auth component
-│   ├── Step2FileUpload.tsx      # ZIP + Excel upload
+│   ├── Step1Authentication.tsx  # Login form
+│   ├── Step2FileUpload.tsx      # File upload
 │   ├── Step3Review.tsx
 │   ├── Step4Results.tsx
 │   ├── StepIndicator.tsx
 │   └── StepsSection.tsx
 ├── lib/
-│   ├── logbook-service.ts   # Excel + ZIP parsing
-│   └── validation.ts        # Entry validation
+│   ├── logbook-service.ts   # Excel & ZIP parser
+│   └── validation.ts        # Data validation
 ├── types/
 │   └── logbook.ts
-├── public/
-├── .env.example             # Environment template
-└── .env.local               # Local environment (gitignored)
+└── public/
 ```
 
 ## 🧪 Development
 
 ```bash
-# Run development server
+# Run dev server
 npm run dev
 
-# Type checking
-npm run type-check
-
-# Linting
-npm run lint
-
-# Build
+# Build for production
 npm run build
+
+# Lint
+npm run lint
 ```
 
 ## 📝 API Endpoints
 
 ### POST `/api/auth/login`
-Authenticate with IPB Portal using username/password.
-
-**Request:**
-```json
-{
-  "username": "string",
-  "password": "string",
-  "aktivitasId": "string"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "cookies": "AspNetCore.Session=...; ...",
-  "message": "Login successful"
-}
-```
+Login to IPB Portal.
 
 ### POST `/api/submit-logbook`
-Submit a single logbook entry.
+Submit logbook entry.
 
-**Request:** `multipart/form-data`
-- `aktivitasId`: string
-- `cookies`: JSON string
-- `entry`: JSON string (includes Dosen field)
-- `file`: File (optional)
+## 👥 Developers
 
-**Response:**
-```json
-{
-  "success": true,
-  "status": "success",
-  "statusCode": 302,
-  "message": "Submitted successfully"
-}
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 👥 Authors
-
-- **Ahmad Nur Rohim** - [GitHub](https://github.com/anro128) | [Instagram](https://instagram.com/ahmadnr_12)
-- **Ahmad Qaulan Sadida** - [GitHub](https://github.com/ahqsa24) | [Instagram](https://instagram.com/adidsadida24)
+- **Ahmad Nur Rohim** - [GitHub](https://github.com/anro128)
+- **Ahmad Qaulan Sadida** - [GitHub](https://github.com/ahqsa24)
 
 ## 📄 License
 
-This project is open source and available under the MIT License.
+MIT License
 
 ## ⚠️ Disclaimer
 
-This tool is created for educational purposes to help IPB students manage their logbook entries more efficiently. Use responsibly and in accordance with IPB's policies.
+This tool is created to help IPB students manage their logbooks more efficiently. Use in accordance with IPB policies.
 
 ## 💡 Tips
 
-1. **Use ZIP upload** for automatic file attachment
-2. **Use Username/Password method** for easiest experience
-3. **Dosen field**: Use numbers (1,2,3) for lecturer selection
-4. **Keep your Excel file clean** - remove empty rows
-5. **Check IPB Portal** to verify submissions
-6. **Download results CSV** for your records
-7. **Use dark mode** for late-night logbook entries 🌙
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-1. Check the [SECURITY.md](./SECURITY.md) for security-related questions
-2. Open an issue on GitHub
-3. Contact the authors via social media
-
----
-
-**Made with ❤️ for IPB Students**
-
-*Simplifying logbook management, one entry at a time.*
+1. Use ZIP upload for easier experience
+2. Use Username/Password for login
+3. Dosen field: use numbers (1, 2, or 1,2)
+4. Remove empty rows in Excel
+5. Verify submissions in IPB Portal
+6. Download CSV results for your records
