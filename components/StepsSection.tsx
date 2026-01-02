@@ -9,6 +9,7 @@ import Step1Authentication from '@/components/Step1Authentication';
 import Step2FileUpload from '@/components/Step2FileUpload';
 import Step3Review from '@/components/Step3Review';
 import Step4Results from '@/components/Step4Results';
+import CommentSection from '@/components/CommentSection';
 
 const STORAGE_KEY = 'ipb-logbook-generator-state';
 
@@ -468,6 +469,9 @@ export default function StepsSection() {
                         </div>
                     </div>
                 </div>
+
+                {/* Comment Section */}
+                <CommentSection />
             </div>
         </section>
     );
