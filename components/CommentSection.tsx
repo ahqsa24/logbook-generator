@@ -164,7 +164,7 @@ export default function CommentSection() {
       setReplyName('');
       setReplyText('');
       setReplyNameError('');
-      setReplyingTo(null);
+      // Keep reply form open - don't call setReplyingTo(null)
     }
   };
 
