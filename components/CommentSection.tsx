@@ -6,14 +6,14 @@ interface Reply {
   id: string;
   name: string;
   comment: string;
-  timestamp: Date;
+  timestamp: Date | string;
 }
 
 interface Comment {
   id: string;
   name: string;
   comment: string;
-  timestamp: Date;
+  timestamp: Date | string;
   replies?: Reply[];
   likes?: number;
 }
@@ -56,38 +56,31 @@ export default function CommentSection() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Delete modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ commentId: string; replyId?: string } | null>(null);
 
 
-  // Load comments and admin mode from localStorage on mount
+  // Load comments from Supabase and admin mode from localStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Load comments
-      const saved = localStorage.getItem(COMMENTS_STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          const commentsWithDates = parsed.map((c: any) => ({
-            ...c,
-            id: c.id || `comment-${Date.now()}-${Math.random()}`,
-            timestamp: new Date(c.timestamp),
-            likes: c.likes || 0,
-            replies: c.replies?.map((r: any) => ({
-              ...r,
-              id: r.id || `reply-${Date.now()}-${Math.random()}`,
-              timestamp: new Date(r.timestamp)
-            })) || []
-          }));
-          setComments(commentsWithDates);
-        } catch (e) {
-          console.error('Failed to load comments:', e);
+    const fetchComments = async () => {
+      try {
+        const response = await fetch('/api/comments');
+        const data = await response.json();
+        if (data.success) {
+          setComments(data.comments);
         }
+      } catch (error) {
+        console.error('Failed to load comments:', error);
       }
+    };
 
-      // Load liked comments
+    fetchComments();
+
+    if (typeof window !== 'undefined') {
+      // Load liked comments from localStorage
       const savedLikes = localStorage.getItem(LIKES_STORAGE_KEY);
       if (savedLikes) {
         try {
@@ -106,37 +99,38 @@ export default function CommentSection() {
     }
   }, []);
 
-  // Save comments to localStorage whenever they change
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        if (comments.length > 0) {
-          localStorage.setItem(COMMENTS_STORAGE_KEY, JSON.stringify(comments));
-        } else {
-          localStorage.removeItem(COMMENTS_STORAGE_KEY);
-        }
-      } catch (e) {
-        console.error('Failed to save comments:', e);
-      }
-    }
-  }, [comments]);
+  // No longer need to save to localStorage - using Supabase now
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     // Validation already handled by real-time check
     if (nameError) return;
 
     if (commentName.trim() && commentText.trim()) {
-      setComments([...comments, {
-        id: `comment-${Date.now()}-${Math.random()}`,
-        name: commentName,
-        comment: commentText,
-        timestamp: new Date(),
-        replies: [],
-        likes: 0
-      }]);
-      setCommentName('');
-      setCommentText('');
-      setNameError('');
+      try {
+        const response = await fetch('/api/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: commentName,
+            comment: commentText
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          // Add new comment to state
+          setComments([{
+            ...data.comment,
+            timestamp: new Date(data.comment.timestamp),
+            replies: []
+          }, ...comments]);
+          setCommentName('');
+          setCommentText('');
+          setNameError('');
+        }
+      } catch (error) {
+        console.error('Failed to add comment:', error);
+      }
     }
   };
 
@@ -150,35 +144,50 @@ export default function CommentSection() {
     }
   };
 
-  const handleAddReply = (commentId: string) => {
+  const handleAddReply = async (commentId: string) => {
     const finalReplyName = isAdminMode && !replyName.trim() ? 'Admin' : replyName;
 
     // Validation already handled by real-time check
     if (replyNameError) return;
 
     if (finalReplyName.trim() && replyText.trim()) {
-      const updatedComments = comments.map(c => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            replies: [
-              ...(c.replies || []),
-              {
-                id: `reply-${Date.now()}-${Math.random()}`,
-                name: finalReplyName,
-                comment: replyText,
-                timestamp: new Date()
-              }
-            ]
-          };
+      try {
+        const response = await fetch(`/api/comments/${commentId}/replies`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: finalReplyName,
+            comment: replyText
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          // Add new reply to state
+          const updatedComments = comments.map(c => {
+            if (c.id === commentId) {
+              return {
+                ...c,
+                replies: [
+                  ...(c.replies || []),
+                  {
+                    ...data.reply,
+                    timestamp: new Date(data.reply.timestamp)
+                  }
+                ]
+              };
+            }
+            return c;
+          });
+          setComments(updatedComments);
+          setReplyName('');
+          setReplyText('');
+          setReplyNameError('');
+          // Keep reply form open - don't call setReplyingTo(null)
         }
-        return c;
-      });
-      setComments(updatedComments);
-      setReplyName('');
-      setReplyText('');
-      setReplyNameError('');
-      // Keep reply form open - don't call setReplyingTo(null)
+      } catch (error) {
+        console.error('Failed to add reply:', error);
+      }
     }
   };
 
@@ -214,63 +223,85 @@ export default function CommentSection() {
     setShowDeleteModal(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteTarget) {
-      const updatedComments = deleteTarget.replyId
-        ? // Delete reply
-          comments.map(c => {
-            if (c.id === deleteTarget.commentId) {
-              return {
-                ...c,
-                replies: c.replies?.filter(r => r.id !== deleteTarget.replyId)
-              };
-            }
-            return c;
-          })
-        : // Delete comment
-          comments.filter(c => c.id !== deleteTarget.commentId);
+      try {
+        if (deleteTarget.replyId) {
+          // Delete reply
+          const response = await fetch(`/api/comments/${deleteTarget.commentId}/replies/${deleteTarget.replyId}`, {
+            method: 'DELETE'
+          });
 
-      setComments(updatedComments);
-      setShowDeleteModal(false);
-      setDeleteTarget(null);
+          const data = await response.json();
+          if (data.success) {
+            const updatedComments = comments.map(c => {
+              if (c.id === deleteTarget.commentId) {
+                return {
+                  ...c,
+                  replies: c.replies?.filter(r => r.id !== deleteTarget.replyId)
+                };
+              }
+              return c;
+            });
+            setComments(updatedComments);
+          }
+        } else {
+          // Delete comment
+          const response = await fetch(`/api/comments/${deleteTarget.commentId}`, {
+            method: 'DELETE'
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            setComments(comments.filter(c => c.id !== deleteTarget.commentId));
+          }
+        }
+
+        setShowDeleteModal(false);
+        setDeleteTarget(null);
+      } catch (error) {
+        console.error('Failed to delete:', error);
+      }
     }
   };
 
-  const handleLike = (commentId: string) => {
-    if (likedComments.has(commentId)) {
-      // Unlike
-      const updatedComments = comments.map(c => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            likes: Math.max(0, (c.likes || 0) - 1)
-          };
-        }
-        return c;
-      });
-      setComments(updatedComments);
+  const handleLike = async (commentId: string) => {
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
 
-      const newLiked = new Set(likedComments);
-      newLiked.delete(commentId);
-      setLikedComments(newLiked);
-      localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify([...newLiked]));
-    } else {
-      // Like
-      const updatedComments = comments.map(c => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            likes: (c.likes || 0) + 1
-          };
-        }
-        return c;
-      });
-      setComments(updatedComments);
+    const isLiked = likedComments.has(commentId);
+    const newLikes = isLiked ? Math.max(0, (comment.likes || 0) - 1) : (comment.likes || 0) + 1;
 
-      const newLiked = new Set(likedComments);
-      newLiked.add(commentId);
-      setLikedComments(newLiked);
-      localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify([...newLiked]));
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ likes: newLikes })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update local state
+        const updatedComments = comments.map(c => {
+          if (c.id === commentId) {
+            return { ...c, likes: newLikes };
+          }
+          return c;
+        });
+        setComments(updatedComments);
+
+        // Update liked state in localStorage
+        const newLiked = new Set(likedComments);
+        if (isLiked) {
+          newLiked.delete(commentId);
+        } else {
+          newLiked.add(commentId);
+        }
+        setLikedComments(newLiked);
+        localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify([...newLiked]));
+      }
+    } catch (error) {
+      console.error('Failed to update like:', error);
     }
   };
 
@@ -289,10 +320,11 @@ export default function CommentSection() {
     }
   };
 
-  const formatDate = (date: Date) => {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
     return `${day}/${month}/${year}`;
   };
 
@@ -417,7 +449,7 @@ export default function CommentSection() {
                                 </span>
                               )}
                               <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {formatDate(comment.timestamp)} {comment.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatDate(comment.timestamp)} {new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
 
@@ -558,7 +590,7 @@ export default function CommentSection() {
                                       </span>
                                     )}
                                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                                      {formatDate(reply.timestamp)} {reply.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      {formatDate(reply.timestamp)} {new Date(reply.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                   </div>
 
@@ -630,20 +662,39 @@ export default function CommentSection() {
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Enter admin password to manage comments
               </p>
-              <input
-                type="password"
-                value={adminPasswordInput}
-                onChange={(e) => {
-                  setAdminPasswordInput(e.target.value);
-                  setPasswordError('');
-                }}
-                onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
-                placeholder="Enter password"
-                className={`input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm mb-4 ${passwordError ? 'border-red-500 dark:border-red-500' : ''}`}
-                autoFocus
-              />
+              <div className="relative mb-4">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={adminPasswordInput}
+                  onChange={(e) => {
+                    setAdminPasswordInput(e.target.value);
+                    setPasswordError('');
+                  }}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+                  placeholder="Enter password"
+                  className={`input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm pr-10 ${passwordError ? 'border-red-500 dark:border-red-500' : ''}`}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
               {passwordError && (
-                <p className="text-sm text-red-600 dark:text-red-400 mb-4 flex items-center gap-2">
+                <p className="text-sm text-red-600 dark:text-red-400 -mt-2 mb-4 flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>

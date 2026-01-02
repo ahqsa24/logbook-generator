@@ -129,19 +129,6 @@ export async function POST(request: NextRequest) {
             // console.log(`📊 Total available lecturers: ${maxDosen}`);
 
             if (dosenNumbers.length > 0) {
-                // STEP 1: Initialize all checkboxes to false first (if we know maxDosen)
-                // This ensures the form structure matches the portal's expectations
-                {/*
-                if (maxDosen !== undefined) {
-                    for (let i = 0; i < maxDosen; i++) {
-                        submitFormData.set(`ListDosenPembimbing[${i}].Value`, 'false');
-                    }
-                    // console.log(`✓ Initialized ${maxDosen} dosen checkboxes to false`);
-                }
-                */}
-                
-                // STEP 2: Set selected ones to true
-                // Using .set() is safe now because we've initialized all checkboxes
                 dosenNumbers.forEach((index: number) => {
                     submitFormData.set(`ListDosenPembimbing[${index}].Value`, 'true');
                     // console.log(`✓ Set ListDosenPembimbing[${index}].Value = true`);
