@@ -14,6 +14,7 @@ interface Step3ReviewProps {
     onSubmit: () => void;
     onBack: () => void;
     onUpdateEntry: (index: number, updatedEntry: LogbookEntry) => void;
+    onAddEntry: (newEntry: LogbookEntry) => void;
 }
 
 const getJenisLogLabel = (id: number) => {
@@ -139,9 +140,14 @@ export default function Step3Review({
     onSubmit,
     onBack,
     onUpdateEntry,
+    onAddEntry,
 }: Step3ReviewProps) {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editedEntry, setEditedEntry] = useState<LogbookEntry | null>(null);
+
+    // Add Entry states
+    const [isAddingEntry, setIsAddingEntry] = useState(false);
+    const [newEntry, setNewEntry] = useState<LogbookEntry | null>(null);
 
     // Search and Filter states
     const [searchText, setSearchText] = useState('');
@@ -150,6 +156,9 @@ export default function Step3Review({
     const [filterDosen, setFilterDosen] = useState<number | 'all'>('all');
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
+
+    // Sort state - default: newest to oldest (desc)
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     // Validate all entries
     const validationResults = entries.map(entry => validateLogbookEntry(entry));
@@ -214,8 +223,100 @@ export default function Step3Review({
         })
         .map(({ idx }) => idx);
 
-    const filteredEntries = filteredIndices.map(idx => entries[idx]);
+    // Sort filtered indices by date
+    const sortedFilteredIndices = [...filteredIndices].sort((idxA, idxB) => {
+        const entryA = entries[idxA];
+        const entryB = entries[idxB];
+
+        // Parse DD/MM/YYYY to Date for comparison
+        const parseDate = (dateStr: string): Date => {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                return new Date(
+                    parseInt(parts[2], 10),
+                    parseInt(parts[1], 10) - 1,
+                    parseInt(parts[0], 10)
+                );
+            }
+            return new Date(0); // fallback for invalid dates
+        };
+
+        const dateA = parseDate(entryA.Waktu);
+        const dateB = parseDate(entryB.Waktu);
+
+        // Sort based on sortOrder
+        if (sortOrder === 'desc') {
+            return dateB.getTime() - dateA.getTime(); // newest first
+        } else {
+            return dateA.getTime() - dateB.getTime(); // oldest first
+        }
+    });
+
+    const filteredEntries = sortedFilteredIndices.map(idx => entries[idx]);
     const hasActiveFilters = searchText.trim() !== '' || filterJenisLog !== 'all' || filterMode !== 'all' || filterDosen !== 'all' || filterDateFrom !== '' || filterDateTo !== '';
+
+    // Handler for adding new entry
+    const handleStartAddEntry = () => {
+        // Create a new empty entry with default values
+        const today = new Date();
+        const day = String(today.getDate()).padStart(2, '0');
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const year = today.getFullYear();
+
+        const emptyEntry: LogbookEntry = {
+            Waktu: `${day}/${month}/${year}`,
+            Tstart: '',
+            Tend: '',
+            JenisLogId: 1,
+            IsLuring: 0,
+            Lokasi: '',
+            Keterangan: '',
+            Dosen: lecturers.length > 0 ? '1' : '',
+        };
+
+        setNewEntry(emptyEntry);
+        setIsAddingEntry(true);
+    };
+
+    const handleSaveNewEntry = () => {
+        if (newEntry) {
+            // Sanitize data before saving
+            const sanitizedEntry = { ...newEntry };
+
+            // Ensure time fields are properly formatted
+            if (sanitizedEntry.Tstart && !/^\d{2}:\d{2}$/.test(sanitizedEntry.Tstart)) {
+                const formatted = formatTimeInput(sanitizedEntry.Tstart);
+                if (formatted) {
+                    sanitizedEntry.Tstart = formatted;
+                }
+            }
+            if (sanitizedEntry.Tend && !/^\d{2}:\d{2}$/.test(sanitizedEntry.Tend)) {
+                const formatted = formatTimeInput(sanitizedEntry.Tend);
+                if (formatted) {
+                    sanitizedEntry.Tend = formatted;
+                }
+            }
+
+            // Validate Dosen field
+            const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
+            sanitizedEntry.Dosen = validateDosenInput(sanitizedEntry.Dosen, maxDosen);
+
+            onAddEntry(sanitizedEntry);
+            setIsAddingEntry(false);
+            setNewEntry(null);
+        }
+    };
+
+    const handleCancelAddEntry = () => {
+        setIsAddingEntry(false);
+        setNewEntry(null);
+    };
+
+    const updateNewEntryField = (field: keyof LogbookEntry, value: any) => {
+        if (newEntry) {
+            setNewEntry({ ...newEntry, [field]: value });
+        }
+    };
 
     const handleEdit = (index: number) => {
         const entry = { ...entries[index] };
@@ -300,17 +401,46 @@ export default function Step3Review({
             </h2>
 
             <div className="mb-6">
-                <p className="text-gray-700 dark:text-gray-300 mb-4">
-                    {hasActiveFilters ? (
-                        <>
-                            Showing <strong>{filteredEntries.length}</strong> of <strong>{entries.length}</strong> entries.
-                        </>
-                    ) : (
-                        <>
-                            Found <strong>{entries.length}</strong> entries. Please review before submitting.
-                        </>
-                    )}
-                </p>
+                <div className="flex items-center justify-between mb-4 gap-3">
+                    <p className="text-gray-700 dark:text-gray-300">
+                        {hasActiveFilters ? (
+                            <>
+                                Showing <strong>{filteredEntries.length}</strong> of <strong>{entries.length}</strong> entries.
+                            </>
+                        ) : (
+                            <>
+                                Found <strong>{entries.length}</strong> entries. Please review before submitting.
+                            </>
+                        )}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                            className="text-sm bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm hover:shadow-md flex items-center gap-2"
+                            title={sortOrder === 'desc' ? 'Sorted: Newest First' : 'Sorted: Oldest First'}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {sortOrder === 'desc' ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                                )}
+                            </svg>
+                            <span className="hidden sm:inline">{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
+                        </button>
+                        <button
+                            onClick={handleStartAddEntry}
+                            className="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm hover:shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isSubmitting || hasSubmitted || isAddingEntry}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span className="hidden sm:inline">Add Entry</span>
+                            <span className="sm:hidden">Add</span>
+                        </button>
+                    </div>
+                </div>
 
                 {/* Search and Filter Section */}
                 <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
@@ -466,7 +596,7 @@ export default function Step3Review({
 
                 {/* Entries List - Scrollable Container */}
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/50">
-                    {filteredIndices.length === 0 ? (
+                    {sortedFilteredIndices.length === 0 ? (
                         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                             <p className="text-sm">No entries match the current filters.</p>
                             <button
@@ -484,197 +614,119 @@ export default function Step3Review({
                             </button>
                         </div>
                     ) : (
-                        filteredIndices.map((idx) => {
-                            const entry = entries[idx];
-                            const validation = validationResults[idx];
-                            const isEditing = editingIndex === idx;
-                            const currentEntry = isEditing ? editedEntry! : entry;
-
-                            return (
-                                <div
-                                    key={idx}
-                                    className={`border rounded-lg p-4 ${validation.isValid
-                                        ? 'border-green-200 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
-                                        : 'border-red-200 dark:border-red-700 bg-red-50/30 dark:bg-red-900/10'
-                                        }`}
-                                >
+                        <>
+                            {/* Add Entry Form */}
+                            {isAddingEntry && newEntry && (
+                                <div className="border-2 border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10 rounded-lg p-4 mb-4">
                                     {/* Header */}
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
                                             <span className="font-semibold text-gray-900 dark:text-gray-200">
-                                                Entry #{idx + 1}
+                                                New Entry
                                             </span>
-                                            {validation.isValid ? (
-                                                <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded">
-                                                    ✓ Valid
-                                                </span>
-                                            ) : (
-                                                <span className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-2 py-1 rounded">
-                                                    ⚠ {validation.errors.length} Error{validation.errors.length > 1 ? 's' : ''}
-                                                </span>
-                                            )}
+                                            <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded">
+                                                Adding...
+                                            </span>
                                         </div>
                                         <div className="flex gap-2">
-                                            {isEditing ? (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleSave(idx)}
-                                                        className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        Save
-                                                    </button>
-                                                    <button
-                                                        onClick={handleCancel}
-                                                        className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded"
-                                                        disabled={isSubmitting}
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleEdit(idx)}
-                                                    className={`text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                    disabled={isSubmitting}
-                                                >
-                                                    Edit
-                                                </button>
-                                            )}
+                                            <button
+                                                onClick={handleSaveNewEntry}
+                                                className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+                                            >
+                                                Save
+                                            </button>
+                                            <button
+                                                onClick={handleCancelAddEntry}
+                                                className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded"
+                                            >
+                                                Cancel
+                                            </button>
                                         </div>
                                     </div>
-
-                                    {/* Validation Errors */}
-                                    {!validation.isValid && (
-                                        <div className="mb-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded p-2">
-                                            <p className="text-xs font-semibold text-red-900 dark:text-red-300 mb-1">Errors:</p>
-                                            <ul className="text-xs text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
-                                                {validation.errors.map((error, errorIdx) => (
-                                                    <li key={errorIdx}>{error}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
 
                                     {/* Fields Grid */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {/* Waktu */}
                                         <div>
                                             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Waktu (DD/MM/YYYY)</label>
-                                            {isEditing ? (
-                                                <input
-                                                    type="date"
-                                                    value={formatDateForInput(currentEntry.Waktu)}
-                                                    onChange={(e) => updateField('Waktu', formatDateForDisplay(e.target.value))}
-                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
-                                                />
-                                            ) : (
-                                                <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Waktu}</p>
-                                            )}
+                                            <input
+                                                type="date"
+                                                value={formatDateForInput(newEntry.Waktu)}
+                                                onChange={(e) => updateNewEntryField('Waktu', formatDateForDisplay(e.target.value))}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
+                                            />
                                         </div>
 
                                         {/* Tstart */}
                                         <div>
                                             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Start Time (HH:MM)</label>
-                                            {isEditing ? (
-                                                <input
-                                                    type="time"
-                                                    value={currentEntry.Tstart}
-                                                    onChange={(e) => updateField('Tstart', e.target.value)}
-                                                    onBlur={(e) => {
-                                                        const formatted = formatTimeInput(e.target.value);
-                                                        if (formatted) updateField('Tstart', formatted);
-                                                    }}
-                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
-                                                />
-                                            ) : (
-                                                <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Tstart}</p>
-                                            )}
+                                            <input
+                                                type="time"
+                                                value={newEntry.Tstart}
+                                                onChange={(e) => updateNewEntryField('Tstart', e.target.value)}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
+                                            />
                                         </div>
 
                                         {/* Tend */}
                                         <div>
                                             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">End Time (HH:MM)</label>
-                                            {isEditing ? (
-                                                <input
-                                                    type="time"
-                                                    value={currentEntry.Tend}
-                                                    onChange={(e) => updateField('Tend', e.target.value)}
-                                                    onBlur={(e) => {
-                                                        const formatted = formatTimeInput(e.target.value);
-                                                        if (formatted) updateField('Tend', formatted);
-                                                    }}
-                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
-                                                />
-                                            ) : (
-                                                <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Tend}</p>
-                                            )}
+                                            <input
+                                                type="time"
+                                                value={newEntry.Tend}
+                                                onChange={(e) => updateNewEntryField('Tend', e.target.value)}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
+                                            />
                                         </div>
 
                                         {/* JenisLogId */}
                                         <div>
                                             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Jenis Log</label>
-                                            {isEditing ? (
-                                                <select
-                                                    value={currentEntry.JenisLogId}
-                                                    onChange={(e) => updateField('JenisLogId', Number(e.target.value))}
-                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                >
-                                                    <option value={1}>1 - Pembimbingan</option>
-                                                    <option value={2}>2 - Ujian</option>
-                                                    <option value={3}>3 - Kegiatan</option>
-                                                </select>
-                                            ) : (
-                                                <p className="text-sm text-gray-900 dark:text-gray-200">{getJenisLogLabel(currentEntry.JenisLogId)}</p>
-                                            )}
+                                            <select
+                                                value={newEntry.JenisLogId}
+                                                onChange={(e) => updateNewEntryField('JenisLogId', Number(e.target.value))}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                            >
+                                                <option value={1}>1 - Pembimbingan</option>
+                                                <option value={2}>2 - Ujian</option>
+                                                <option value={3}>3 - Kegiatan</option>
+                                            </select>
                                         </div>
 
                                         {/* IsLuring */}
                                         <div>
                                             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Mode</label>
-                                            {isEditing ? (
-                                                <select
-                                                    value={currentEntry.IsLuring}
-                                                    onChange={(e) => updateField('IsLuring', Number(e.target.value))}
-                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                >
-                                                    <option value={0}>0 - Online</option>
-                                                    <option value={1}>1 - Offline</option>
-                                                    <option value={2}>2 - Hybrid</option>
-                                                </select>
-                                            ) : (
-                                                <p className="text-sm text-gray-900 dark:text-gray-200">{getModeLabel(currentEntry.IsLuring)}</p>
-                                            )}
+                                            <select
+                                                value={newEntry.IsLuring}
+                                                onChange={(e) => updateNewEntryField('IsLuring', Number(e.target.value))}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                            >
+                                                <option value={0}>0 - Online</option>
+                                                <option value={1}>1 - Offline</option>
+                                                <option value={2}>2 - Hybrid</option>
+                                            </select>
                                         </div>
 
                                         {/* Lokasi */}
                                         <div>
                                             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Lokasi</label>
-                                            {isEditing ? (
-                                                <input
-                                                    type="text"
-                                                    value={currentEntry.Lokasi}
-                                                    onChange={(e) => updateField('Lokasi', e.target.value)}
-                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                />
-                                            ) : (
-                                                <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Lokasi}</p>
-                                            )}
+                                            <input
+                                                type="text"
+                                                value={newEntry.Lokasi}
+                                                onChange={(e) => updateNewEntryField('Lokasi', e.target.value)}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                            />
                                         </div>
 
                                         {/* Keterangan - Full Width */}
                                         <div className="md:col-span-2 lg:col-span-3">
                                             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Keterangan</label>
-                                            {isEditing ? (
-                                                <textarea
-                                                    value={currentEntry.Keterangan}
-                                                    onChange={(e) => updateField('Keterangan', e.target.value)}
-                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                    rows={2}
-                                                />
-                                            ) : (
-                                                <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Keterangan}</p>
-                                            )}
+                                            <textarea
+                                                value={newEntry.Keterangan}
+                                                onChange={(e) => updateNewEntryField('Keterangan', e.target.value)}
+                                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                rows={2}
+                                            />
                                         </div>
 
                                         {/* Dosen - Checkbox Group */}
@@ -682,111 +734,365 @@ export default function Step3Review({
                                             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2">
                                                 Dosen Pembimbing {lecturers.length > 0 && `(${lecturers.length} available)`}
                                             </label>
-                                            {isEditing ? (
-                                                lecturers.length > 0 ? (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
-                                                        {lecturers.map((lecturer) => {
-                                                            // Parse current Dosen string to check if this lecturer is selected
-                                                            const selectedIds = currentEntry.Dosen
-                                                                ? currentEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
-                                                                : [];
-                                                            const isChecked = selectedIds.includes(lecturer.id);
+                                            {lecturers.length > 0 ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                                                    {lecturers.map((lecturer) => {
+                                                        const selectedIds = newEntry.Dosen
+                                                            ? newEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
+                                                            : [];
+                                                        const isChecked = selectedIds.includes(lecturer.id);
 
-                                                            return (
-                                                                <label
-                                                                    key={lecturer.id}
-                                                                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={isChecked}
-                                                                        onChange={(e) => {
-                                                                            const currentIds = currentEntry.Dosen
-                                                                                ? currentEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
-                                                                                : [];
+                                                        return (
+                                                            <label
+                                                                key={lecturer.id}
+                                                                className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={(e) => {
+                                                                        const currentIds = newEntry.Dosen
+                                                                            ? newEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
+                                                                            : [];
 
-                                                                            let newIds: number[];
-                                                                            if (e.target.checked) {
-                                                                                // Add this lecturer
-                                                                                newIds = [...currentIds, lecturer.id].sort((a, b) => a - b);
-                                                                            } else {
-                                                                                // Remove this lecturer
-                                                                                newIds = currentIds.filter(id => id !== lecturer.id);
-                                                                            }
+                                                                        let newIds: number[];
+                                                                        if (e.target.checked) {
+                                                                            newIds = [...currentIds, lecturer.id].sort((a, b) => a - b);
+                                                                        } else {
+                                                                            newIds = currentIds.filter(id => id !== lecturer.id);
+                                                                        }
 
-                                                                            // Update Dosen field as comma-separated string
-                                                                            // If no lecturers selected, use empty string instead of undefined
-                                                                            const dosenString = newIds.length > 0 ? newIds.join(',') : '';
-                                                                            updateField('Dosen', dosenString);
-                                                                        }}
-                                                                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                                                                    />
-                                                                    <span className="text-sm text-gray-900 dark:text-gray-200">
-                                                                        {lecturer.name}
-                                                                    </span>
-                                                                </label>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                ) : (
-                                                    <input
-                                                        type="text"
-                                                        value={currentEntry.Dosen || ''}
-                                                        onChange={(e) => updateField('Dosen', e.target.value)} onBlur={(e) => {
-                                                            // Validate Dosen input on blur
-                                                            const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
-                                                            const validated = validateDosenInput(e.target.value, maxDosen);
-                                                            if (validated !== e.target.value) {
-                                                                updateField('Dosen', validated);
-                                                            }
-                                                        }} className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
-                                                        placeholder="Optional (e.g., 1,2)"
-                                                    />
-                                                )
+                                                                        const dosenString = newIds.length > 0 ? newIds.join(',') : '';
+                                                                        updateNewEntryField('Dosen', dosenString);
+                                                                    }}
+                                                                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                                                />
+                                                                <span className="text-sm text-gray-900 dark:text-gray-200">
+                                                                    {lecturer.name}
+                                                                </span>
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
                                             ) : (
-                                                <p className="text-sm text-gray-900 dark:text-gray-200">
-                                                    {currentEntry.Dosen ? (
-                                                        lecturers.length > 0 ? (
-                                                            // Show lecturer names if available
-                                                            currentEntry.Dosen.split(',')
-                                                                .map(id => {
-                                                                    const lecturerId = parseInt(id.trim(), 10);
-                                                                    const lecturer = lecturers.find(l => l.id === lecturerId);
-                                                                    return lecturer ? lecturer.name : `Dosen ${id}`;
-                                                                })
-                                                                .join(', ')
-                                                        ) : (
-                                                            // Fallback to numbers if lecturers not loaded
-                                                            currentEntry.Dosen
-                                                        )
-                                                    ) : '-'}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        {/* File Upload */}
-                                        <div className="md:col-span-2">
-                                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Supporting File</label>
-                                            <input
-                                                type="file"
-                                                onChange={(e) =>
-                                                    e.target.files?.[0] &&
-                                                    onFileUpload(idx, e.target.files[0])
-                                                }
-                                                className="w-full text-xs dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                disabled={isSubmitting}
-                                            />
-                                            {entry.fileName && (
-                                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                                                    ✓ {entry.fileName}
-                                                </p>
+                                                <input
+                                                    type="text"
+                                                    value={newEntry.Dosen || ''}
+                                                    onChange={(e) => updateNewEntryField('Dosen', e.target.value)}
+                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                    placeholder="Optional (e.g., 1,2)"
+                                                />
                                             )}
                                         </div>
                                     </div>
                                 </div>
-                            );
-                        })
+                            )}
+
+                            {/* Existing Entries */}
+                            {sortedFilteredIndices.map((idx) => {
+                                const entry = entries[idx];
+                                const validation = validationResults[idx];
+                                const isEditing = editingIndex === idx;
+                                const currentEntry = isEditing ? editedEntry! : entry;
+
+                                return (
+                                    <div
+                                        key={idx}
+                                        className={`border rounded-lg p-4 ${validation.isValid
+                                            ? 'border-green-200 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
+                                            : 'border-red-200 dark:border-red-700 bg-red-50/30 dark:bg-red-900/10'
+                                            }`}
+                                    >
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-semibold text-gray-900 dark:text-gray-200">
+                                                    Entry #{idx + 1}
+                                                </span>
+                                                {validation.isValid ? (
+                                                    <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded">
+                                                        ✓ Valid
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-2 py-1 rounded">
+                                                        ⚠ {validation.errors.length} Error{validation.errors.length > 1 ? 's' : ''}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {isEditing ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleSave(idx)}
+                                                            className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            Save
+                                                        </button>
+                                                        <button
+                                                            onClick={handleCancel}
+                                                            className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded"
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleEdit(idx)}
+                                                        className={`text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Validation Errors */}
+                                        {!validation.isValid && (
+                                            <div className="mb-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded p-2">
+                                                <p className="text-xs font-semibold text-red-900 dark:text-red-300 mb-1">Errors:</p>
+                                                <ul className="text-xs text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
+                                                    {validation.errors.map((error, errorIdx) => (
+                                                        <li key={errorIdx}>{error}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {/* Fields Grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {/* Waktu */}
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Waktu (DD/MM/YYYY)</label>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="date"
+                                                        value={formatDateForInput(currentEntry.Waktu)}
+                                                        onChange={(e) => updateField('Waktu', formatDateForDisplay(e.target.value))}
+                                                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Waktu}</p>
+                                                )}
+                                            </div>
+
+                                            {/* Tstart */}
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Start Time (HH:MM)</label>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="time"
+                                                        value={currentEntry.Tstart}
+                                                        onChange={(e) => updateField('Tstart', e.target.value)}
+                                                        onBlur={(e) => {
+                                                            const formatted = formatTimeInput(e.target.value);
+                                                            if (formatted) updateField('Tstart', formatted);
+                                                        }}
+                                                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Tstart}</p>
+                                                )}
+                                            </div>
+
+                                            {/* Tend */}
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">End Time (HH:MM)</label>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="time"
+                                                        value={currentEntry.Tend}
+                                                        onChange={(e) => updateField('Tend', e.target.value)}
+                                                        onBlur={(e) => {
+                                                            const formatted = formatTimeInput(e.target.value);
+                                                            if (formatted) updateField('Tend', formatted);
+                                                        }}
+                                                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Tend}</p>
+                                                )}
+                                            </div>
+
+                                            {/* JenisLogId */}
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Jenis Log</label>
+                                                {isEditing ? (
+                                                    <select
+                                                        value={currentEntry.JenisLogId}
+                                                        onChange={(e) => updateField('JenisLogId', Number(e.target.value))}
+                                                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                    >
+                                                        <option value={1}>1 - Pembimbingan</option>
+                                                        <option value={2}>2 - Ujian</option>
+                                                        <option value={3}>3 - Kegiatan</option>
+                                                    </select>
+                                                ) : (
+                                                    <p className="text-sm text-gray-900 dark:text-gray-200">{getJenisLogLabel(currentEntry.JenisLogId)}</p>
+                                                )}
+                                            </div>
+
+                                            {/* IsLuring */}
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Mode</label>
+                                                {isEditing ? (
+                                                    <select
+                                                        value={currentEntry.IsLuring}
+                                                        onChange={(e) => updateField('IsLuring', Number(e.target.value))}
+                                                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                    >
+                                                        <option value={0}>0 - Online</option>
+                                                        <option value={1}>1 - Offline</option>
+                                                        <option value={2}>2 - Hybrid</option>
+                                                    </select>
+                                                ) : (
+                                                    <p className="text-sm text-gray-900 dark:text-gray-200">{getModeLabel(currentEntry.IsLuring)}</p>
+                                                )}
+                                            </div>
+
+                                            {/* Lokasi */}
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Lokasi</label>
+                                                {isEditing ? (
+                                                    <input
+                                                        type="text"
+                                                        value={currentEntry.Lokasi}
+                                                        onChange={(e) => updateField('Lokasi', e.target.value)}
+                                                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Lokasi}</p>
+                                                )}
+                                            </div>
+
+                                            {/* Keterangan - Full Width */}
+                                            <div className="md:col-span-2 lg:col-span-3">
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Keterangan</label>
+                                                {isEditing ? (
+                                                    <textarea
+                                                        value={currentEntry.Keterangan}
+                                                        onChange={(e) => updateField('Keterangan', e.target.value)}
+                                                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                        rows={2}
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-gray-900 dark:text-gray-200">{currentEntry.Keterangan}</p>
+                                                )}
+                                            </div>
+
+                                            {/* Dosen - Checkbox Group */}
+                                            <div className="md:col-span-2 lg:col-span-3">
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2">
+                                                    Dosen Pembimbing {lecturers.length > 0 && `(${lecturers.length} available)`}
+                                                </label>
+                                                {isEditing ? (
+                                                    lecturers.length > 0 ? (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                                                            {lecturers.map((lecturer) => {
+                                                                // Parse current Dosen string to check if this lecturer is selected
+                                                                const selectedIds = currentEntry.Dosen
+                                                                    ? currentEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
+                                                                    : [];
+                                                                const isChecked = selectedIds.includes(lecturer.id);
+
+                                                                return (
+                                                                    <label
+                                                                        key={lecturer.id}
+                                                                        className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+                                                                    >
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isChecked}
+                                                                            onChange={(e) => {
+                                                                                const currentIds = currentEntry.Dosen
+                                                                                    ? currentEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
+                                                                                    : [];
+
+                                                                                let newIds: number[];
+                                                                                if (e.target.checked) {
+                                                                                    // Add this lecturer
+                                                                                    newIds = [...currentIds, lecturer.id].sort((a, b) => a - b);
+                                                                                } else {
+                                                                                    // Remove this lecturer
+                                                                                    newIds = currentIds.filter(id => id !== lecturer.id);
+                                                                                }
+
+                                                                                // Update Dosen field as comma-separated string
+                                                                                // If no lecturers selected, use empty string instead of undefined
+                                                                                const dosenString = newIds.length > 0 ? newIds.join(',') : '';
+                                                                                updateField('Dosen', dosenString);
+                                                                            }}
+                                                                            className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                                                        />
+                                                                        <span className="text-sm text-gray-900 dark:text-gray-200">
+                                                                            {lecturer.name}
+                                                                        </span>
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={currentEntry.Dosen || ''}
+                                                            onChange={(e) => updateField('Dosen', e.target.value)} onBlur={(e) => {
+                                                                // Validate Dosen input on blur
+                                                                const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
+                                                                const validated = validateDosenInput(e.target.value, maxDosen);
+                                                                if (validated !== e.target.value) {
+                                                                    updateField('Dosen', validated);
+                                                                }
+                                                            }} className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
+                                                            placeholder="Optional (e.g., 1,2)"
+                                                        />
+                                                    )
+                                                ) : (
+                                                    <p className="text-sm text-gray-900 dark:text-gray-200">
+                                                        {currentEntry.Dosen ? (
+                                                            lecturers.length > 0 ? (
+                                                                // Show lecturer names if available
+                                                                currentEntry.Dosen.split(',')
+                                                                    .map(id => {
+                                                                        const lecturerId = parseInt(id.trim(), 10);
+                                                                        const lecturer = lecturers.find(l => l.id === lecturerId);
+                                                                        return lecturer ? lecturer.name : `Dosen ${id}`;
+                                                                    })
+                                                                    .join(', ')
+                                                            ) : (
+                                                                // Fallback to numbers if lecturers not loaded
+                                                                currentEntry.Dosen
+                                                            )
+                                                        ) : '-'}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* File Upload */}
+                                            <div className="md:col-span-2">
+                                                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Supporting File</label>
+                                                <input
+                                                    type="file"
+                                                    onChange={(e) =>
+                                                        e.target.files?.[0] &&
+                                                        onFileUpload(idx, e.target.files[0])
+                                                    }
+                                                    className="w-full text-xs dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                    disabled={isSubmitting}
+                                                />
+                                                {entry.fileName && (
+                                                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                        ✓ {entry.fileName}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </>
                     )}
                 </div>
             </div>
