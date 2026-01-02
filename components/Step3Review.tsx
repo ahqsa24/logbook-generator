@@ -436,7 +436,7 @@ export default function Step3Review({
                     {hasActiveFilters && (
                         <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
                             <span className="font-semibold">Active filters:</span>
-                            {searchText.trim() && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Search: "{searchText}"</span>}
+                            {searchText.trim() && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Search: &quot;{searchText}&quot;</span>}
                             {filterJenisLog !== 'all' && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Jenis: {getJenisLogLabel(filterJenisLog as number)}</span>}
                             {filterMode !== 'all' && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Mode: {getModeLabel(filterMode as number)}</span>}
                             {filterDosen !== 'all' && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Dosen: {lecturers.find(l => l.id === filterDosen)?.name || filterDosen}</span>}
