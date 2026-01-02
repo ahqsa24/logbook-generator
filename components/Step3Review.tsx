@@ -154,13 +154,24 @@ export default function Step3Review({
             const sanitizedEntry = { ...editedEntry };
 
             // Ensure time fields are properly formatted (HH:MM)
+            // Keep the value as-is if it's already in HH:MM format from HTML5 time input
             if (sanitizedEntry.Tstart) {
-                const formatted = formatTimeInput(sanitizedEntry.Tstart);
-                if (formatted) sanitizedEntry.Tstart = formatted;
+                // Only format if it's not already in HH:MM format
+                if (!/^\d{2}:\d{2}$/.test(sanitizedEntry.Tstart)) {
+                    const formatted = formatTimeInput(sanitizedEntry.Tstart);
+                    if (formatted) {
+                        sanitizedEntry.Tstart = formatted;
+                    }
+                }
             }
             if (sanitizedEntry.Tend) {
-                const formatted = formatTimeInput(sanitizedEntry.Tend);
-                if (formatted) sanitizedEntry.Tend = formatted;
+                // Only format if it's not already in HH:MM format
+                if (!/^\d{2}:\d{2}$/.test(sanitizedEntry.Tend)) {
+                    const formatted = formatTimeInput(sanitizedEntry.Tend);
+                    if (formatted) {
+                        sanitizedEntry.Tend = formatted;
+                    }
+                }
             }
 
             // console.log('Saving edited entry:', sanitizedEntry);
@@ -439,7 +450,7 @@ export default function Step3Review({
                                                     {lecturers.map((lecturer) => {
                                                         // Parse current Dosen string to check if this lecturer is selected
                                                         const selectedIds = currentEntry.Dosen
-                                                            ? currentEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10))
+                                                            ? currentEntry.Dosen.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n))
                                                             : [];
                                                         const isChecked = selectedIds.includes(lecturer.id);
 
@@ -466,7 +477,8 @@ export default function Step3Review({
                                                                         }
 
                                                                         // Update Dosen field as comma-separated string
-                                                                        const dosenString = newIds.length > 0 ? newIds.join(',') : undefined;
+                                                                        // If no lecturers selected, use empty string instead of undefined
+                                                                        const dosenString = newIds.length > 0 ? newIds.join(',') : '';
                                                                         updateField('Dosen', dosenString);
                                                                     }}
                                                                     className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
@@ -482,7 +494,7 @@ export default function Step3Review({
                                                 <input
                                                     type="text"
                                                     value={currentEntry.Dosen || ''}
-                                                    onChange={(e) => updateField('Dosen', e.target.value || undefined)}
+                                                    onChange={(e) => updateField('Dosen', e.target.value)}
                                                     className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200"
                                                     placeholder="Optional (e.g., 1,2)"
                                                 />
