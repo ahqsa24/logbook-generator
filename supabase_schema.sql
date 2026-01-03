@@ -39,7 +39,6 @@ ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE replies ENABLE ROW LEVEL SECURITY;
 
 -- 5. Create policies to allow public read/write access
--- (Since this is a public comment system, everyone can read and write)
 
 -- Comments policies
 CREATE POLICY "Enable read access for all users" ON comments
