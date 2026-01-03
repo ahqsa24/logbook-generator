@@ -165,8 +165,17 @@ export default function Step3Review({
     // Delete confirmation state
     const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
 
-    // Validate all entries
-    const validationResults = entries.map(entry => validateLogbookEntry(entry));
+    // Validate all entries with maxDosen parameter
+    // Use lecturers.length if available, otherwise default to 1 (strict validation)
+    const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
+    console.log('🔍 Validating entries with maxDosen:', maxDosen, 'lecturers:', lecturers.length);
+    const validationResults = entries.map(entry => {
+        const result = validateLogbookEntry(entry, maxDosen);
+        if (!result.isValid && entry.Dosen) {
+            console.log('❌ Validation failed for entry with Dosen:', entry.Dosen, 'errors:', result.errors);
+        }
+        return result;
+    });
     const hasErrors = validationResults.some(result => !result.isValid);
 
     // Filter entries based on search and filters
