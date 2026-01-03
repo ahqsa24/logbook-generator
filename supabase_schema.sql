@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS comments (
   comment TEXT NOT NULL,
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   likes INTEGER DEFAULT 0,
+  is_admin BOOLEAN DEFAULT FALSE,
+  is_pinned BOOLEAN DEFAULT FALSE,
+  pinned_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -20,12 +23,14 @@ CREATE TABLE IF NOT EXISTS replies (
   comment_id UUID NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   comment TEXT NOT NULL,
+  is_admin BOOLEAN DEFAULT FALSE,
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 3. Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_comments_pinned ON comments(is_pinned DESC, pinned_at DESC);
 CREATE INDEX IF NOT EXISTS idx_replies_comment_id ON replies(comment_id);
 CREATE INDEX IF NOT EXISTS idx_replies_created_at ON replies(created_at ASC);
 

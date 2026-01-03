@@ -8,7 +8,7 @@ export async function POST(
 ) {
     try {
         const body = await request.json();
-        const { name, comment } = body;
+        const { name, comment, is_admin } = body;
         const { id: commentId } = await params;
 
         if (!name || !comment) {
@@ -22,6 +22,7 @@ export async function POST(
             comment_id: commentId,
             name: name.trim(),
             comment: comment.trim(),
+            is_admin: is_admin || false,
             timestamp: new Date().toISOString()
         };
 

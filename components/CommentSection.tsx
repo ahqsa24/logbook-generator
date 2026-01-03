@@ -7,6 +7,7 @@ interface Reply {
   name: string;
   comment: string;
   timestamp: Date | string;
+  is_admin?: boolean;
 }
 
 interface Comment {
@@ -16,6 +17,9 @@ interface Comment {
   timestamp: Date | string;
   replies?: Reply[];
   likes?: number;
+  is_admin?: boolean;
+  is_pinned?: boolean;
+  pinned_at?: Date | string;
 }
 
 const COMMENTS_STORAGE_KEY = 'ipb-logbook-comments';
@@ -70,6 +74,12 @@ export default function CommentSection() {
         const response = await fetch('/api/comments');
         const data = await response.json();
         if (data.success) {
+          // Debug: Check first comment to see if is_admin and is_pinned fields exist
+          if (data.comments && data.comments.length > 0) {
+            console.log('First comment from API:', data.comments[0]);
+            console.log('Has is_admin?', 'is_admin' in data.comments[0]);
+            console.log('Has is_pinned?', 'is_pinned' in data.comments[0]);
+          }
           setComments(data.comments);
         }
       } catch (error) {
@@ -112,12 +122,17 @@ export default function CommentSection() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: commentName,
-            comment: commentText
+            comment: commentText,
+            is_admin: isAdminMode
           })
         });
 
         const data = await response.json();
         if (data.success) {
+          // Debug: Check if is_admin is in response
+          console.log('New comment from API:', data.comment);
+          console.log('is_admin field:', data.comment.is_admin);
+
           // Add new comment to state
           setComments([{
             ...data.comment,
@@ -157,7 +172,8 @@ export default function CommentSection() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: finalReplyName,
-            comment: replyText
+            comment: replyText,
+            is_admin: isAdminMode
           })
         });
 
@@ -305,19 +321,85 @@ export default function CommentSection() {
     }
   };
 
+  const handlePinComment = async (commentId: string) => {
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    const isPinned = comment.is_pinned;
+    const currentPinnedCount = comments.filter(c => c.is_pinned).length;
+
+    // Check if trying to pin and already have 3 pinned
+    if (!isPinned && currentPinnedCount >= 3) {
+      alert('Maximum 3 comments can be pinned. Please unpin another comment first.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          is_pinned: !isPinned,
+          pinned_at: !isPinned ? new Date().toISOString() : null
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update local state
+        const updatedComments = comments.map(c => {
+          if (c.id === commentId) {
+            return {
+              ...c,
+              is_pinned: !isPinned,
+              pinned_at: !isPinned ? new Date() : undefined
+            };
+          }
+          return c;
+        });
+        setComments(updatedComments);
+      } else if (data.error) {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('Failed to pin comment:', error);
+    }
+  };
+
   const getSortedComments = () => {
     const commentsCopy = [...comments];
 
+    // Separate pinned and unpinned comments
+    const pinnedComments = commentsCopy.filter(c => c.is_pinned);
+    const unpinnedComments = commentsCopy.filter(c => !c.is_pinned);
+
+    // Sort pinned comments by pinned_at (most recently pinned first)
+    pinnedComments.sort((a, b) => {
+      const dateA = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
+      const dateB = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    // Sort unpinned comments based on selected sort option
+    let sortedUnpinned = unpinnedComments;
     switch (sortBy) {
       case 'most-liked':
-        return commentsCopy.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        sortedUnpinned = unpinnedComments.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        break;
       case 'newest':
-        return commentsCopy.reverse();
+        // Newest first: API already returns newest first (created_at DESC)
+        sortedUnpinned = unpinnedComments;
+        break;
       case 'oldest':
-        return commentsCopy;
+        // Oldest first: reverse the API order to get oldest first
+        sortedUnpinned = [...unpinnedComments].reverse();
+        break;
       default:
-        return commentsCopy;
+        sortedUnpinned = unpinnedComments;
     }
+
+    // Return pinned comments first, then unpinned
+    return [...pinnedComments, ...sortedUnpinned];
   };
 
   const formatDate = (date: Date | string) => {
@@ -443,9 +525,18 @@ export default function CommentSection() {
                                 {comment.name}
                               </span>
                               {/* Admin Badge */}
-                              {comment.name.toLowerCase() === 'admin' && (
+                              {(comment.is_admin || comment.name.toLowerCase() === 'admin') && (
                                 <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-700">
                                   Admin
+                                </span>
+                              )}
+                              {/* Pinned Badge */}
+                              {comment.is_pinned && (
+                                <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-full border border-yellow-200 dark:border-yellow-700 flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
+                                  </svg>
+                                  Pinned
                                 </span>
                               )}
                               <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -496,6 +587,22 @@ export default function CommentSection() {
                                 </svg>
                                 {comment.replies?.length || 0}
                               </button>
+
+                              {/* Pin Button - Admin Only */}
+                              {isAdminMode && (
+                                <button
+                                  onClick={() => handlePinComment(comment.id)}
+                                  className={`flex items-center gap-1 text-xs font-medium transition-colors ${comment.is_pinned
+                                    ? 'text-yellow-600 dark:text-yellow-400'
+                                    : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400'
+                                    }`}
+                                >
+                                  <svg className="w-4 h-4" fill={comment.is_pinned ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 16 16" strokeWidth="1.5">
+                                    <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
+                                  </svg>
+                                  {comment.is_pinned ? 'Unpin' : 'Pin'}
+                                </button>
+                              )}
                             </div>
                           </div>
 
@@ -542,7 +649,7 @@ export default function CommentSection() {
                               onChange={(e) => setReplyText(e.target.value)}
                               placeholder="Add a reply..."
                               rows={2}
-                              className="w-full px-3 py-2 text-sm rounded-lg border-b-2 border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 transition-colors resize-none"
+                              className="w-full px-3 py-1 text-sm rounded-lg border-b-2 border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 transition-colors resize-none"
                             />
                             <div className="flex items-center gap-2 justify-end">
                               <button
@@ -584,7 +691,7 @@ export default function CommentSection() {
                                     <span className="font-medium text-sm text-gray-900 dark:text-gray-200">
                                       {reply.name}
                                     </span>
-                                    {reply.name.toLowerCase() === 'admin' && (
+                                    {(reply.is_admin || reply.name.toLowerCase() === 'admin') && (
                                       <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-700">
                                         Admin
                                       </span>

@@ -8,19 +8,43 @@ export async function PATCH(
 ) {
     try {
         const body = await request.json();
-        const { likes } = body;
+        const { likes, is_pinned, pinned_at } = body;
         const { id } = await params;
 
-        if (likes === undefined) {
+        // Validate that at least one field is being updated
+        if (likes === undefined && is_pinned === undefined) {
             return NextResponse.json(
-                { success: false, error: 'Likes count is required' },
+                { success: false, error: 'At least one field (likes or is_pinned) is required' },
                 { status: 400 }
             );
         }
 
+        // If pinning, check max 3 limit
+        if (is_pinned === true) {
+            const { data: pinnedComments } = await supabase
+                .from('comments')
+                .select('id')
+                .eq('is_pinned', true);
+
+            if (pinnedComments && pinnedComments.length >= 3 && !pinnedComments.some(c => c.id === id)) {
+                return NextResponse.json(
+                    { success: false, error: 'Maximum 3 comments can be pinned' },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // Build update object
+        const updateData: any = {};
+        if (likes !== undefined) updateData.likes = likes;
+        if (is_pinned !== undefined) {
+            updateData.is_pinned = is_pinned;
+            updateData.pinned_at = is_pinned ? (pinned_at || new Date().toISOString()) : null;
+        }
+
         const { data, error } = await supabase
             .from('comments')
-            .update({ likes })
+            .update(updateData)
             .eq('id', id)
             .select()
             .single();
