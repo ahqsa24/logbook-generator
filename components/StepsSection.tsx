@@ -139,6 +139,12 @@ export default function StepsSection() {
         }
     };
 
+    const handleManualEntry = () => {
+        // Start with empty entries - user can add entries manually using "Add Entry" button
+        setEntries([]);
+        setStep(3);
+    };
+
     const handleSupportingFileUpload = async (index: number, file: File) => {
         const reader = new FileReader();
         reader.onload = () => {
@@ -423,6 +429,7 @@ export default function StepsSection() {
                         <Step2FileUpload
                             onFileUpload={handleFileUpload}
                             onBack={() => setStep(1)}
+                            onManualEntry={handleManualEntry}
                         />
                     )}
 
