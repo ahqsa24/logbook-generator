@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { LogbookEntry, Lecturer } from '@/types/logbook';
 import { validateLogbookEntry } from '@/lib/validation';
 
@@ -165,6 +165,10 @@ export default function Step3Review({
     // Delete confirmation state
     const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
 
+    // Jump to error state
+    const [currentErrorIndex, setCurrentErrorIndex] = useState(0);
+    const entryRefs = useRef<(HTMLDivElement | null)[]>([]);
+
     // Validate all entries with maxDosen parameter
     // Use lecturers.length if available, otherwise default to 1 (strict validation)
     const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
@@ -186,6 +190,11 @@ export default function Step3Review({
             !entry.Lokasi?.trim() &&
             !entry.Keterangan?.trim();
     });
+
+    // Identify entries with errors for jump functionality
+    const errorIndices = validationResults
+        .map((result, idx) => !result.isValid ? idx : -1)
+        .filter(idx => idx !== -1);
 
     // Filter entries based on search and filters
     const filteredIndices = entries
@@ -278,6 +287,40 @@ export default function Step3Review({
     const filteredEntries = sortedFilteredIndices.map(idx => entries[idx]);
     const hasActiveFilters = searchText.trim() !== '' || filterJenisLog !== 'all' || filterMode !== 'all' || filterDosen !== 'all' || filterDateFrom !== '' || filterDateTo !== '';
 
+    // Validation for new entry
+    const isNewEntryValid = (() => {
+        if (!newEntry) return false;
+
+        const hasRequiredFields =
+            newEntry.Waktu?.trim() &&
+            newEntry.Tstart?.trim() &&
+            newEntry.Tend?.trim() &&
+            newEntry.Lokasi?.trim() &&
+            newEntry.Keterangan?.trim();
+
+        if (!hasRequiredFields) return false;
+
+        const validation = validateLogbookEntry(newEntry, maxDosen);
+        return validation.isValid;
+    })();
+
+    // Validation for edited entry
+    const isEditedEntryValid = (() => {
+        if (!editedEntry) return false;
+
+        const hasRequiredFields =
+            editedEntry.Waktu?.trim() &&
+            editedEntry.Tstart?.trim() &&
+            editedEntry.Tend?.trim() &&
+            editedEntry.Lokasi?.trim() &&
+            editedEntry.Keterangan?.trim();
+
+        if (!hasRequiredFields) return false;
+
+        const validation = validateLogbookEntry(editedEntry, maxDosen);
+        return validation.isValid;
+    })();
+
     // Handler for adding new entry
     const handleStartAddEntry = () => {
         // Create a new empty entry with default values
@@ -335,6 +378,21 @@ export default function Step3Review({
         setNewEntry(null);
     };
 
+    // Jump to next error handler
+    const handleJumpToNextError = () => {
+        if (errorIndices.length === 0) return;
+
+        const nextIndex = (currentErrorIndex + 1) % errorIndices.length;
+        const entryIndex = errorIndices[nextIndex];
+
+        entryRefs.current[entryIndex]?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+        });
+
+        setCurrentErrorIndex(nextIndex);
+    };
+
     // Delete handlers
     const handleDeleteClick = (index: number) => {
         setDeleteConfirmIndex(index);
@@ -380,6 +438,10 @@ export default function Step3Review({
         if (!entry.Tend || !/^\d{2}:\d{2}$/.test(entry.Tend)) {
             entry.Tend = '';
         }
+
+        // Validate and sanitize Dosen field - filter out out-of-range IDs
+        const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
+        entry.Dosen = validateDosenInput(entry.Dosen, maxDosen);
 
         setEditingIndex(index);
         setEditedEntry(entry);
@@ -617,17 +679,30 @@ export default function Step3Review({
 
                 {hasErrors && (
                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-4">
-                        <div className="flex items-start gap-2">
-                            <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <div>
-                                <p className="text-sm font-semibold text-red-900 dark:text-red-300">
-                                    Validation Errors Detected
-                                </p>
-                                <p className="text-xs text-red-700 dark:text-red-400 mt-1">
-                                    Some entries have validation errors. Please fix them before submitting. Click &quot;Edit&quot; to modify the entry.
-                                </p>
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-2 flex-1">
+                                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <p className="text-sm font-semibold text-red-900 dark:text-red-300">
+                                        Validation Errors Detected
+                                    </p>
+                                    <p className="text-xs text-red-700 dark:text-red-400 mt-1">
+                                        Some entries have validation errors. Please fix them before submitting. Click &quot;Edit&quot; to modify the entry.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                                <button
+                                    onClick={handleJumpToNextError}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-600 text-white rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg text-sm whitespace-nowrap"
+                                >
+                                    Jump to Next Error
+                                </button>
+                                <span className="text-xs text-red-700 dark:text-red-400 font-medium">
+                                    Error {currentErrorIndex + 1} of {errorIndices.length}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -669,7 +744,11 @@ export default function Step3Review({
                                 <div className="flex gap-2">
                                     <button
                                         onClick={handleSaveNewEntry}
-                                        className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+                                        disabled={!isNewEntryValid}
+                                        className={`text-xs px-3 py-1 rounded transition-colors ${isNewEntryValid
+                                            ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                                            : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed opacity-50'
+                                            }`}
                                     >
                                         Save
                                     </button>
@@ -836,6 +915,7 @@ export default function Step3Review({
                         return (
                             <div
                                 key={idx}
+                                ref={(el) => { entryRefs.current[idx] = el; }}
                                 className={`border rounded-lg p-4 ${validation.isValid
                                     ? 'border-green-200 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10'
                                     : 'border-red-200 dark:border-red-700 bg-red-50/30 dark:bg-red-900/10'
@@ -862,8 +942,11 @@ export default function Step3Review({
                                             <>
                                                 <button
                                                     onClick={() => handleSave(idx)}
-                                                    className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
-                                                    disabled={isSubmitting}
+                                                    disabled={isSubmitting || !isEditedEntryValid}
+                                                    className={`text-xs px-3 py-1 rounded transition-colors ${isSubmitting || !isEditedEntryValid
+                                                        ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed opacity-50'
+                                                        : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                                                        }`}
                                                 >
                                                     Save
                                                 </button>
@@ -1150,7 +1233,7 @@ export default function Step3Review({
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     <p className="text-sm font-semibold mb-1">No logbook entries yet</p>
-                                    <p className="text-xs">Click the "Add Entry" button above to create your first entry.</p>
+                                    <p className="text-xs">Click the &quot;Add Entry&quot; button above to create your first entry.</p>
                                 </>
                             ) : (
                                 <>

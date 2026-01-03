@@ -130,8 +130,6 @@ export async function POST(request: NextRequest) {
             allCookies[name] = value;
         });
 
-
-
         // Step 5: Send ALL AspNetCore cookies (flexible matching)
         const cookieString = Object.entries(allCookies)
             .filter(([name]) =>

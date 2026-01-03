@@ -98,8 +98,6 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // console.log(hiddenFields);
-
         // Step 2: Prepare form data with hidden fields + entry data
         const submitFormData = new FormData();
 
@@ -116,34 +114,22 @@ export async function POST(request: NextRequest) {
 
         // Handle Dosen selection (dynamic based on entry.Dosen field)
         if (entry.Dosen && String(entry.Dosen).trim() !== '') {
-            // Parse comma-separated dosen numbers: "1", "2", "1,2,3"
-            // User input is 1-indexed (1, 2, 3), convert to 0-indexed for portal (0, 1, 2)
             const dosenString = String(entry.Dosen).trim();
             const dosenNumbers = dosenString
                 .split(',')
-                .map((num: string) => parseInt(num.trim(), 10)) // Parse as integer
-                .filter((num: number) => !isNaN(num) && num > 0) // Filter out invalid numbers
-                .map((num: number) => num - 1); // Convert 1-indexed to 0-indexed
-
-            // console.log(`📋 Dosen input: "${dosenString}" -> 0-indexed: [${dosenNumbers.join(', ')}]`);
-            // console.log(`📊 Total available lecturers: ${maxDosen}`);
+                .map((num: string) => parseInt(num.trim(), 10))
+                .filter((num: number) => !isNaN(num) && num > 0)
+                .map((num: number) => num - 1);
 
             if (dosenNumbers.length > 0) {
                 dosenNumbers.forEach((index: number) => {
                     submitFormData.set(`ListDosenPembimbing[${index}].Value`, 'true');
-                    // console.log(`✓ Set ListDosenPembimbing[${index}].Value = true`);
                 });
-
-                // console.log(`✅ Total dosen selected: ${dosenNumbers.length}`);
             } else {
-                // If parsing failed, default to first dosen
                 submitFormData.set('ListDosenPembimbing[0].Value', 'true');
-                // console.log('⚠️ Parsing failed, defaulting to first dosen');
             }
         } else {
-            // Default: select first dosen if no Dosen field specified
             submitFormData.set('ListDosenPembimbing[0].Value', 'true');
-            // console.log('ℹ️ No dosen specified, defaulting to first dosen');
         }
 
         // Handle IsLuring (matching Python bot logic)
@@ -162,8 +148,6 @@ export async function POST(request: NextRequest) {
         if (file) {
             submitFormData.set('File', file);
         }
-
-        // console.log(submitFormData);
 
         // Step 3: Submit the form with retry logic
         const postUrl = `${BASE_URL}/Kegiatan/LogAktivitasKampusMerdeka/Tambah`;
@@ -195,7 +179,7 @@ export async function POST(request: NextRequest) {
                 });
 
                 clearTimeout(timeout2);
-                break; // Success, exit retry loop
+                break;
             } catch (error) {
                 lastError = error;
                 retries--;
@@ -213,8 +197,6 @@ export async function POST(request: NextRequest) {
         let success = false;
         const statusCode = response.status;
 
-        // Status 302 (redirect) = success
-        // Status 200 with no error keywords = success
         if (statusCode === 302) {
             success = true;
         } else if (statusCode === 200) {

@@ -22,7 +22,6 @@ interface Comment {
   pinned_at?: Date | string;
 }
 
-const COMMENTS_STORAGE_KEY = 'ipb-logbook-comments';
 const LIKES_STORAGE_KEY = 'ipb-logbook-likes';
 const ADMIN_MODE_KEY = 'ipb-admin-mode';
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
@@ -66,7 +65,6 @@ export default function CommentSection() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ commentId: string; replyId?: string } | null>(null);
 
-
   // Load comments from Supabase and admin mode from localStorage on mount
   useEffect(() => {
     const fetchComments = async () => {
@@ -108,8 +106,6 @@ export default function CommentSection() {
       }
     }
   }, []);
-
-  // No longer need to save to localStorage - using Supabase now
 
   const handleAddComment = async () => {
     // Validation already handled by real-time check

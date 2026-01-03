@@ -177,7 +177,7 @@ export default function Step2FileUpload({
                     </div>
                     <div className="flex-1">
                         <p className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-2">
-                            Don't have a file and want to create logbook manually?
+                            Don&apos;t have a file and want to create logbook manually?
                         </p>
                         <button
                             onClick={onManualEntry}

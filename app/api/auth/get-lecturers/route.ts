@@ -48,8 +48,6 @@ export async function POST(request: NextRequest) {
         // Extract lecturer names from ListDosenPembimbing checkboxes
         const lecturers: { id: number; name: string }[] = [];
 
-        // More specific selector: only get checkbox inputs with .Value in name
-        // This filters out hidden inputs and other non-checkbox elements
         const dosenCheckboxes = $('input[type="checkbox"][name*="ListDosenPembimbing"][name$=".Value"]');
 
         dosenCheckboxes.each((index, element) => {
@@ -58,7 +56,7 @@ export async function POST(request: NextRequest) {
 
             // Extract index from name: ListDosenPembimbing[0].Value -> 0
             const match = checkboxName.match(/ListDosenPembimbing\[(\d+)\]\.Value/);
-            if (!match) return; // Skip if doesn't match expected format
+            if (!match) return;
 
             const dosenIndex = parseInt(match[1], 10);
 
@@ -88,7 +86,7 @@ export async function POST(request: NextRequest) {
             }
 
             lecturers.push({
-                id: dosenIndex + 1, // 1-indexed for user display (convert from 0-indexed)
+                id: dosenIndex + 1,
                 name: label
             });
         });
