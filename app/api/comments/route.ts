@@ -44,7 +44,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, comment } = body;
+        const { name, comment, is_admin } = body;
 
         if (!name || !comment) {
             return NextResponse.json(
@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
             name: name.trim(),
             comment: comment.trim(),
             timestamp: new Date().toISOString(),
-            likes: 0
+            likes: 0,
+            is_admin: is_admin || false
         };
 
         const { data, error } = await supabase
