@@ -169,6 +169,9 @@ export default function Step3Review({
     const [currentErrorIndex, setCurrentErrorIndex] = useState(0);
     const entryRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+    // Add Entry form ref for auto-scroll
+    const addEntryFormRef = useRef<HTMLDivElement | null>(null);
+
     // Validate all entries with maxDosen parameter
     // Use lecturers.length if available, otherwise default to 1 (strict validation)
     const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
@@ -342,6 +345,14 @@ export default function Step3Review({
 
         setNewEntry(emptyEntry);
         setIsAddingEntry(true);
+
+        // Scroll to Add Entry form after a short delay to ensure DOM is updated
+        setTimeout(() => {
+            addEntryFormRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }, 100);
     };
 
     const handleSaveNewEntry = () => {
@@ -698,7 +709,7 @@ export default function Step3Review({
                                     onClick={handleJumpToNextError}
                                     className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-600 text-white rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg text-sm whitespace-nowrap"
                                 >
-                                    Jump to Next Error
+                                    Jump to Error
                                 </button>
                                 <span className="text-xs text-red-700 dark:text-red-400 font-medium">
                                     Error {currentErrorIndex + 1} of {errorIndices.length}
@@ -730,7 +741,10 @@ export default function Step3Review({
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/50">
                     {/* Add Entry Form - Always visible when adding */}
                     {isAddingEntry && newEntry && (
-                        <div className="border-2 border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10 rounded-lg p-4 mb-4">
+                        <div
+                            ref={addEntryFormRef}
+                            className="border-2 border-green-300 dark:border-green-700 bg-green-50/30 dark:bg-green-900/10 rounded-lg p-4 mb-4"
+                        >
                             {/* Header */}
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
@@ -1273,7 +1287,7 @@ export default function Step3Review({
                                 {Math.round((currentSubmission / entries.length) * 100)}%
                             </span>
                         </div>
-                        <div className="w-full bg-purple-100 dark:bg-gray-700 rounded-full h-2">
+                        <div className="w-full bg-purple-100 dark:bg-gray-700 rounded-full h-2 mb-3">
                             <div
                                 className="bg-purple-600 dark:bg-purple-500 h-2 rounded-full transition-all duration-300"
                                 style={{
@@ -1281,6 +1295,11 @@ export default function Step3Review({
                                 }}
                             />
                         </div>
+                        {currentSubmission > 0 && currentSubmission % 25 === 0 && currentSubmission < entries.length && (
+                            <div className="text-xs text-purple-600 dark:text-purple-400 font-medium animate-pulse mt-3">
+                                Refreshing session cookies...
+                            </div>
+                        )}
                     </div>
                 )
             }

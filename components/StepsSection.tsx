@@ -180,14 +180,47 @@ export default function StepsSection() {
         setResults([]);
         setCurrentSubmission(0);
 
+        // Helper function to refresh session cookies
+        const refreshSessionCookies = async (aktivitasId: string, currentCookies: any) => {
+            try {
+                const response = await fetch('/api/refresh-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ aktivitasId, cookies: currentCookies })
+                });
+                const result = await response.json();
+                return result.success ? result.cookies : null;
+            } catch (error) {
+                console.error('Cookie refresh failed:', error);
+                return null;
+            }
+        };
+
+        // Use a mutable reference for cookies that can be updated
+        let currentCookies = cookies;
+        let refreshCount = 0;
+
         for (let i = 0; i < entries.length; i++) {
             setCurrentSubmission(i + 1);
             const entry = entries[i];
 
+            // Refresh cookies every 25 entries (except for the first entry)
+            if (i > 0 && i % 25 === 0 && i < entries.length) {
+                console.log(`🔄 Refreshing session cookies at entry ${i + 1}...`);
+                const refreshedCookies = await refreshSessionCookies(aktivitasId, currentCookies);
+                if (refreshedCookies) {
+                    currentCookies = refreshedCookies;
+                    refreshCount++;
+                    console.log(`✅ Session refreshed successfully (refresh #${refreshCount})`);
+                } else {
+                    console.warn('⚠️ Cookie refresh failed, continuing with current cookies');
+                }
+            }
+
             try {
                 const formData = new FormData();
                 formData.append('aktivitasId', aktivitasId);
-                formData.append('cookies', JSON.stringify(cookies));
+                formData.append('cookies', JSON.stringify(currentCookies));
                 formData.append('entry', JSON.stringify(entry));
 
                 if (entry.fileData && entry.fileName) {
@@ -216,6 +249,11 @@ export default function StepsSection() {
                     entry,
                     error: 'Network error'
                 }]);
+            }
+
+            // Add 1-second delay between submissions (except after the last one)
+            if (i < entries.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
 
