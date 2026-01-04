@@ -19,6 +19,17 @@ export async function POST(request: NextRequest) {
         const cookies = JSON.parse(cookiesJson);
         const entry = JSON.parse(entryJson);
 
+        // Validate file size on server-side (10MB limit)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        if (file && file.size > MAX_FILE_SIZE) {
+            const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+            return NextResponse.json({
+                success: false,
+                status: 'error',
+                error: `File size (${fileSizeMB} MB) exceeds the maximum allowed size of 10 MB. Please compress or choose a smaller file.`
+            }, { status: 400 });
+        }
+
         const BASE_URL = 'https://studentportal.ipb.ac.id';
 
         // Convert cookies object to cookie header string

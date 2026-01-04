@@ -142,6 +142,8 @@ export const SearchFilters = ({
                         type="date"
                         value={filterDateFrom}
                         onChange={(e) => setFilterDateFrom(e.target.value)}
+                        min="1900-01-01"
+                        max="2099-12-31"
                         className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-2 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
                     />
                 </div>
@@ -155,6 +157,8 @@ export const SearchFilters = ({
                         type="date"
                         value={filterDateTo}
                         onChange={(e) => setFilterDateTo(e.target.value)}
+                        min="1900-01-01"
+                        max="2099-12-31"
                         className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-2 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
                     />
                 </div>

@@ -32,9 +32,6 @@ export const useEntryValidation = ({
     // Validate all entries
     const validationResults = entries.map(entry => {
         const result = validateLogbookEntry(entry, maxDosen);
-        if (!result.isValid && entry.Dosen) {
-            console.log('❌ Validation failed for entry with Dosen:', entry.Dosen, 'errors:', result.errors);
-        }
         return result;
     });
 

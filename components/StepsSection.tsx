@@ -47,7 +47,7 @@ export default function StepsSection() {
                 }
             }
         }
-    }, []);
+    }, [setResults]);
 
     // Save state to localStorage only after Step 2 (file upload completed)
     useEffect(() => {

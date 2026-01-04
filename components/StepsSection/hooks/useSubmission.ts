@@ -32,14 +32,10 @@ export const useSubmission = () => {
 
             // Refresh cookies every 25 entries (except for the first entry)
             if (i > 0 && i % 25 === 0 && i < entries.length) {
-                console.log(`🔄 Refreshing session cookies at entry ${i + 1}...`);
                 const refreshedCookies = await refreshSessionCookies(aktivitasId, currentCookies);
                 if (refreshedCookies) {
                     currentCookies = refreshedCookies;
                     refreshCount++;
-                    console.log(`✅ Session refreshed successfully (refresh #${refreshCount})`);
-                } else {
-                    console.warn('⚠️ Cookie refresh failed, continuing with current cookies');
                 }
             }
 

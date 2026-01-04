@@ -7,3 +7,6 @@ export * from './SearchFilters';
 export * from './ErrorWarning';
 export * from './EmptyWarning';
 export * from './DeleteConfirmModal';
+export { default as EntryFormFields } from './EntryFormFields';
+export { default as AddEntryForm } from './AddEntryForm';
+export { default as EntryCard } from './EntryCard';
