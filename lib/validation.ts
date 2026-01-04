@@ -3,6 +3,10 @@ export function isValidDate(dateStr: string): boolean {
     if (!regex.test(dateStr)) return false;
 
     const [day, month, year] = dateStr.split('/').map(Number);
+
+    // Validate year is exactly 4 digits (between 1000 and 9999)
+    if (year < 1000 || year > 9999) return false;
+
     const date = new Date(year, month - 1, day);
 
     return (
