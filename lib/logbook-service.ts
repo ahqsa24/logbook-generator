@@ -198,7 +198,32 @@ export async function parseExcelFile(file: File): Promise<LogbookEntry[]> {
 
         return entries;
     } catch (error) {
-        throw new Error('Failed to parse Excel file: ' + (error as Error).message);
+        const errorMessage = (error as Error).message;
+
+        // Check for common Excel parsing errors and provide user-friendly messages
+        if (errorMessage.includes('central directory') || errorMessage.includes('zip')) {
+            throw new Error(
+                'File is corrupted or not a valid Excel file (.xlsx).\\n\\n' +
+                'Please ensure you are uploading a valid Excel file saved in .xlsx format.\\n' +
+                'If you saved it from Excel, try: File → Save As → Excel Workbook (.xlsx)'
+            );
+        }
+
+        if (errorMessage.includes('missing required columns')) {
+            // Pass through our custom validation errors
+            throw error;
+        }
+
+        // Generic Excel parsing error
+        throw new Error(
+            'Failed to read Excel file.\\n\\n' +
+            'Possible causes:\\n' +
+            '• File is corrupted or in wrong format\\n' +
+            '• File is not a valid .xlsx Excel file\\n' +
+            '• File was saved in compatibility mode (.xls)\\n\\n' +
+            'Please save your file as .xlsx format and try again.\\n\\n' +
+            `Technical error: ${errorMessage}`
+        );
     }
 }
 
@@ -266,88 +291,115 @@ export async function parseZipFile(zipFile: File): Promise<{
     entries: LogbookEntry[];
     files: Map<string, File>;
 }> {
-    const zip = new JSZip();
-    const zipContent = await zip.loadAsync(zipFile);
+    try {
+        const zip = new JSZip();
+        const zipContent = await zip.loadAsync(zipFile);
 
-    // Find Excel file
-    let excelFile: JSZip.JSZipObject | null = null;
-    let excelFileName = '';
+        // Find Excel file
+        let excelFile: JSZip.JSZipObject | null = null;
+        let excelFileName = '';
 
-    for (const [filename, file] of Object.entries(zipContent.files)) {
-        if (!file.dir && (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.csv'))) {
-            excelFile = file;
-            excelFileName = filename;
-            break;
-        }
-    }
-
-    if (!excelFile) {
-        throw new Error('No Excel file found in ZIP. Please include a .xlsx, .xls, or .csv file.');
-    }
-
-    // Extract and parse Excel
-    const excelBlob = await excelFile.async('blob');
-    const excelFileObj = new File([excelBlob], excelFileName);
-    const entries = await parseExcelFile(excelFileObj);
-
-    // Extract all other files (PDFs, images, etc.)
-    const filesMap = new Map<string, File>();
-
-    for (const [filename, file] of Object.entries(zipContent.files)) {
-        // Skip directories and the Excel file itself
-        if (file.dir || filename === excelFileName) {
-            continue;
+        for (const [filename, file] of Object.entries(zipContent.files)) {
+            if (!file.dir && (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.csv'))) {
+                excelFile = file;
+                excelFileName = filename;
+                break;
+            }
         }
 
-        // Skip hidden files and system files
-        if (filename.startsWith('.') || filename.startsWith('__MACOSX')) {
-            continue;
+        if (!excelFile) {
+            throw new Error('No Excel file found in ZIP. Please include a .xlsx, .xls, or .csv file.');
         }
 
-        const blob = await file.async('blob');
-        const mimeType = getMimeType(filename);
-        const fileObj = new File([blob], filename.split('/').pop() || filename, { type: mimeType });
+        // Extract and parse Excel
+        const excelBlob = await excelFile.async('blob');
+        const excelFileObj = new File([excelBlob], excelFileName);
+        const entries = await parseExcelFile(excelFileObj);
 
-        const normalizedPath = normalizePath(filename);
-        filesMap.set(normalizedPath, fileObj);
-    }
+        // Extract all other files (PDFs, images, etc.)
+        const filesMap = new Map<string, File>();
+
+        for (const [filename, file] of Object.entries(zipContent.files)) {
+            // Skip directories and the Excel file itself
+            if (file.dir || filename === excelFileName) {
+                continue;
+            }
+
+            // Skip hidden files and system files
+            if (filename.startsWith('.') || filename.startsWith('__MACOSX')) {
+                continue;
+            }
+
+            const blob = await file.async('blob');
+            const mimeType = getMimeType(filename);
+            const fileObj = new File([blob], filename.split('/').pop() || filename, { type: mimeType });
+
+            const normalizedPath = normalizePath(filename);
+            filesMap.set(normalizedPath, fileObj);
+        }
 
 
 
-    // Match FilePath in entries with extracted files
-    let matchedCount = 0;
-    let missingCount = 0;
+        // Match FilePath in entries with extracted files
+        let matchedCount = 0;
+        let missingCount = 0;
 
-    for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
-        if (entry.FilePath) {
-            const normalizedFilePath = normalizePath(entry.FilePath);
+        for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+            if (entry.FilePath) {
+                const normalizedFilePath = normalizePath(entry.FilePath);
 
-            // Try exact match first
-            let matchedFile = filesMap.get(normalizedFilePath);
+                // Try exact match first
+                let matchedFile = filesMap.get(normalizedFilePath);
 
-            // If not found, try matching just the filename
-            if (!matchedFile) {
-                const filename = normalizedFilePath.split('/').pop() || '';
-                for (const [path, file] of filesMap.entries()) {
-                    if (path.endsWith(filename)) {
-                        matchedFile = file;
-                        break;
+                // If not found, try matching just the filename
+                if (!matchedFile) {
+                    const filename = normalizedFilePath.split('/').pop() || '';
+                    for (const [path, file] of filesMap.entries()) {
+                        if (path.endsWith(filename)) {
+                            matchedFile = file;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (matchedFile) {
-                const base64 = await fileToBase64(matchedFile);
-                entry.fileData = base64;
-                entry.fileName = matchedFile.name;
-                matchedCount++;
-            } else {
-                missingCount++;
-                console.warn(`✗ Missing: ${entry.FilePath}`);
+                if (matchedFile) {
+                    const base64 = await fileToBase64(matchedFile);
+                    entry.fileData = base64;
+                    entry.fileName = matchedFile.name;
+                    matchedCount++;
+                } else {
+                    missingCount++;
+                    console.warn(`✗ Missing: ${entry.FilePath}`);
+                }
             }
         }
-    }
 
-    return { entries, files: filesMap };
+        return { entries, files: filesMap };
+    } catch (error) {
+        const errorMessage = (error as Error).message;
+
+        // Check if it's our custom error messages - pass them through
+        if (errorMessage.includes('No Excel file found') ||
+            errorMessage.includes('missing required columns') ||
+            errorMessage.includes('File is corrupted') ||
+            errorMessage.includes('Failed to read Excel file')) {
+            throw error;
+        }
+
+        // ZIP parsing errors
+        if (errorMessage.includes('zip') || errorMessage.includes('corrupt')) {
+            throw new Error(
+                'Failed to read ZIP file.\\n\\n' +
+                'The file may be corrupted or not a valid ZIP archive.\\n' +
+                'Please ensure you are uploading a valid .zip file.'
+            );
+        }
+
+        // Generic error
+        throw new Error(
+            'Failed to process ZIP file.\\n\\n' +
+            `Error: ${errorMessage}`
+        );
+    }
 }

@@ -16,11 +16,6 @@ export const useComments = () => {
                 const response = await fetch('/api/comments');
                 const data = await response.json();
                 if (data.success) {
-                    if (data.comments && data.comments.length > 0) {
-                        console.log('First comment from API:', data.comments[0]);
-                        console.log('Has is_admin?', 'is_admin' in data.comments[0]);
-                        console.log('Has is_pinned?', 'is_pinned' in data.comments[0]);
-                    }
                     setComments(data.comments);
                 }
             } catch (error) {
@@ -46,9 +41,6 @@ export const useComments = () => {
 
             const data = await response.json();
             if (data.success) {
-                console.log('New comment from API:', data.comment);
-                console.log('is_admin field:', data.comment.is_admin);
-
                 setComments([{
                     ...data.comment,
                     timestamp: new Date(data.comment.timestamp),

@@ -229,7 +229,6 @@ export default function Step3Review({
             const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
             sanitizedEntry.Dosen = validateDosenInput(sanitizedEntry.Dosen, maxDosen);
 
-            // console.log('Saving edited entry:', sanitizedEntry);
             onUpdateEntry(index, sanitizedEntry);
             setEditingIndex(null);
             setEditedEntry(null);

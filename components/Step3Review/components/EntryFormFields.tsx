@@ -39,6 +39,8 @@ export default function EntryFormFields({
                         type="date"
                         value={formatDateForInput(entry.Waktu)}
                         onChange={(e) => onFieldChange('Waktu', formatDateForDisplay(e.target.value))}
+                        min="1900-01-01"
+                        max="2099-12-31"
                         className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
                     />
                 ) : (
