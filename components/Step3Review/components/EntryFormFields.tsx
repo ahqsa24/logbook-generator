@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { LogbookEntry } from '@/types/logbook';
 import { formatDateForInput, formatDateForDisplay, formatTimeInput } from '../utils';
 
@@ -27,6 +28,7 @@ export default function EntryFormFields({
     isSubmitting = false,
     onFileRemove,
 }: EntryFormFieldsProps) {
+    const [fileError, setFileError] = useState<string | null>(null);
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Waktu */}
@@ -240,6 +242,19 @@ export default function EntryFormFields({
                             onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
+                                    // Clear previous error
+                                    setFileError(null);
+
+                                    // Import validation at runtime
+                                    const { validateFileSize } = await import('../utils/fileUploadHelper');
+                                    const validation = validateFileSize(file);
+
+                                    if (!validation.valid) {
+                                        setFileError(validation.error || 'File size exceeds limit');
+                                        e.target.value = ''; // Reset input
+                                        return;
+                                    }
+
                                     const reader = new FileReader();
                                     reader.onload = () => {
                                         const base64 = (reader.result as string).split(',')[1];
@@ -252,6 +267,28 @@ export default function EntryFormFields({
                             className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 file:mr-3 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-white file:text-gray-700 file:border file:border-gray-300 hover:file:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800"
                             disabled={isSubmitting}
                         />
+                        {fileError && (
+                            <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                    <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold text-red-800 dark:text-red-300">File Too Large</p>
+                                        <p className="text-xs text-red-700 dark:text-red-400 mt-1">{fileError}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFileError(null)}
+                                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         {entry.fileName && (
                             <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded">
                                 <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
