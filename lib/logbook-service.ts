@@ -10,6 +10,10 @@ function formatExcelDate(value: any): string {
         if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
             return value;
         }
+        // If it's a pure number string (like "617"), return as-is for validation to catch
+        if (/^\d+$/.test(value.trim())) {
+            return value;
+        }
         // Check if it's in other date formats and try to parse
         const parsed = new Date(value);
         if (!isNaN(parsed.getTime())) {
@@ -22,7 +26,16 @@ function formatExcelDate(value: any): string {
     }
 
     // If it's a number (Excel serial date)
+    // Only accept reasonable date serial numbers (from year 2000 onwards)
     if (typeof value === 'number') {
+        // Excel date serial for 2000-01-01 is 36526
+        // Excel date serial for 2100-01-01 is ~73050
+        // Reject small numbers like 617 which are clearly invalid
+        if (value < 36526 || value > 73050) {
+            // Invalid date serial, return as string for validation to catch
+            return String(value);
+        }
+
         // Excel stores dates as days since 1900-01-01 (with a leap year bug)
         const excelEpoch = new Date(1900, 0, 1);
         const daysOffset = value - 2; // Adjust for Excel's 1900 leap year bug
@@ -52,12 +65,49 @@ function formatExcelTime(value: any): string {
         if (/^\d{1,2}:\d{2}$/.test(value)) {
             return value;
         }
+        // If it's a single/double digit number string (like "8", "10", "617"), return as-is
+        if (/^\d{1,4}$/.test(value.trim())) {
+            return value;
+        }
+        // Try parsing as date string
+        const parsed = new Date(value);
+        if (!isNaN(parsed.getTime())) {
+            // Use UTC to avoid timezone offset issues
+            const hours = parsed.getUTCHours();
+            const minutes = parsed.getUTCMinutes();
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
         return value;
     }
 
-    // If it's a number (Excel time fraction)
-    if (typeof value === 'number' && value < 1) {
+    // If it's a Date object (Excel sometimes stores time as full datetime)
+    if (value instanceof Date && !isNaN(value.getTime())) {
+        // Use UTC to avoid timezone offset issues
+        const hours = value.getUTCHours();
+        const minutes = value.getUTCMinutes();
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    // If it's a number (Excel time fraction between 0 and 1)
+    if (typeof value === 'number' && value >= 0 && value < 1) {
         const totalMinutes = Math.round(value * 24 * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    // If it's a number >= 1 (could be invalid or datetime serial)
+    if (typeof value === 'number' && value >= 1) {
+        // If it's a small integer (like 8, 10, 617), it's likely invalid input
+        // Return as string for validation to catch
+        if (value < 100 && Number.isInteger(value)) {
+            return String(value);
+        }
+
+        // Otherwise treat as Excel datetime serial number
+        // Extract the time fraction part
+        const timeFraction = value - Math.floor(value);
+        const totalMinutes = Math.round(timeFraction * 24 * 60);
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
