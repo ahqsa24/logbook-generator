@@ -10,6 +10,7 @@ import Step2FileUpload from '@/components/Step2FileUpload';
 import Step3Review from '@/components/Step3Review';
 import Step4Results from '@/components/Step4Results';
 import CommentSection from '@/components/CommentSection';
+import { useSubmission, useDownload } from './StepsSection/hooks';
 
 const STORAGE_KEY = 'ipb-logbook-generator-state';
 
@@ -19,11 +20,12 @@ export default function StepsSection() {
     const [aktivitasId, setAktivitasId] = useState<string>('');
     const [cookies, setCookies] = useState<CookieData | null>(null);
     const [entries, setEntries] = useState<LogbookEntry[]>([]);
-    const [results, setResults] = useState<SubmissionResult[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentSubmission, setCurrentSubmission] = useState(0);
     const [hasSubmitted, setHasSubmitted] = useState(false);
     const [lecturers, setLecturers] = useState<Lecturer[]>([]);
+
+    // Use custom hooks
+    const { isSubmitting, currentSubmission, results, submitAll, setResults } = useSubmission();
+    const { downloadResults, downloadXLSX } = useDownload(results, lecturers);
 
     // Load state from localStorage on mount (only if from Step 3+)
     useEffect(() => {
@@ -176,256 +178,12 @@ export default function StepsSection() {
     };
 
     const handleSubmitAll = async () => {
-        setIsSubmitting(true);
-        setResults([]);
-        setCurrentSubmission(0);
-
-        // Helper function to refresh session cookies
-        const refreshSessionCookies = async (aktivitasId: string, currentCookies: any) => {
-            try {
-                const response = await fetch('/api/refresh-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ aktivitasId, cookies: currentCookies })
-                });
-                const result = await response.json();
-                return result.success ? result.cookies : null;
-            } catch (error) {
-                console.error('Cookie refresh failed:', error);
-                return null;
-            }
-        };
-
-        // Use a mutable reference for cookies that can be updated
-        let currentCookies = cookies;
-        let refreshCount = 0;
-
-        for (let i = 0; i < entries.length; i++) {
-            setCurrentSubmission(i + 1);
-            const entry = entries[i];
-
-            // Refresh cookies every 25 entries (except for the first entry)
-            if (i > 0 && i % 25 === 0 && i < entries.length) {
-                console.log(`🔄 Refreshing session cookies at entry ${i + 1}...`);
-                const refreshedCookies = await refreshSessionCookies(aktivitasId, currentCookies);
-                if (refreshedCookies) {
-                    currentCookies = refreshedCookies;
-                    refreshCount++;
-                    console.log(`✅ Session refreshed successfully (refresh #${refreshCount})`);
-                } else {
-                    console.warn('⚠️ Cookie refresh failed, continuing with current cookies');
-                }
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('aktivitasId', aktivitasId);
-                formData.append('cookies', JSON.stringify(currentCookies));
-                formData.append('entry', JSON.stringify(entry));
-
-                if (entry.fileData && entry.fileName) {
-                    const blob = await fetch(`data:application/octet-stream;base64,${entry.fileData}`).then(r => r.blob());
-                    formData.append('file', blob, entry.fileName);
-                }
-
-                const response = await fetch('/api/submit-logbook', {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                const result = await response.json();
-
-                setResults(prev => [...prev, {
-                    row: i,
-                    status: result.status || (result.success ? 'success' : 'error'),
-                    success: result.success,
-                    error: result.error || result.message,
-                    entry
-                }]);
-            } catch (error) {
-                setResults(prev => [...prev, {
-                    success: false,
-                    status: 'error',
-                    entry,
-                    error: 'Network error'
-                }]);
-            }
-
-            // Add 1-second delay between submissions (except after the last one)
-            if (i < entries.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-        }
-
-        setIsSubmitting(false);
+        const submissionResults = await submitAll(entries, aktivitasId, cookies);
         setHasSubmitted(true);
         setStep(4);
     };
 
-    // Helper function to convert Dosen IDs to names (shared by download functions)
-    const getDosenNames = (dosenStr: string | undefined): string => {
-        if (!dosenStr || dosenStr.trim() === '') return '-';
 
-        if (lecturers.length === 0) {
-            // Fallback to numbers if lecturers not loaded
-            return dosenStr;
-        }
-
-        // Parse comma-separated IDs and convert to names
-        return dosenStr
-            .split(',')
-            .map(id => {
-                const lecturerId = parseInt(id.trim(), 10);
-                const lecturer = lecturers.find(l => l.id === lecturerId);
-                return lecturer ? lecturer.name : `Dosen ${id}`;
-            })
-            .join(', ');
-    };
-
-    const downloadResults = () => {
-        // Helper function to escape CSV fields
-        const escapeCSV = (field: string | undefined | null): string => {
-            if (!field) return '';
-            const str = String(field);
-            // If field contains comma, quote, or newline, wrap in quotes and escape quotes
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return `"${str.replace(/"/g, '""')}"`;
-            }
-            return str;
-        };
-
-        // Helper functions for labels
-        const getJenisLogLabel = (id: number) => {
-            const labels = { 1: 'Pembimbingan', 2: 'Ujian', 3: 'Kegiatan' };
-            return labels[id as keyof typeof labels] || String(id);
-        };
-
-        const getModeLabel = (mode: number) => {
-            const labels = { 0: 'Online', 1: 'Offline', 2: 'Hybrid' };
-            return labels[mode as keyof typeof labels] || String(mode);
-        };
-
-        // CSV Header matching Step 4 table
-        const headers = ['No', 'Waktu', 'Keterangan', 'Durasi', 'Media', 'Jenis Kegiatan', 'Dosen Penggerak', 'Dokumen', 'Status', 'Error'];
-
-        // CSV Rows
-        const rows = results.map((r, idx) => {
-            const entry = r.entry;
-            const durasi = entry ? `${entry.Tstart} - ${entry.Tend}` : '-';
-            const status = r.status === 'success' ? 'Success' : 'Error';
-            const errorMsg = r.status === 'success' ? '' : (r.error || '');
-
-            return [
-                String(idx + 1), // No
-                escapeCSV(entry?.Waktu), // Waktu
-                escapeCSV(entry?.Keterangan), // Keterangan
-                escapeCSV(durasi), // Durasi
-                escapeCSV(entry ? getModeLabel(entry.IsLuring) : '-'), // Media
-                escapeCSV(entry ? getJenisLogLabel(entry.JenisLogId) : '-'), // Jenis Kegiatan
-                escapeCSV(getDosenNames(entry?.Dosen)), // Dosen Penggerak
-                escapeCSV(entry?.fileName || '-'), // Dokumen
-                status, // Status
-                escapeCSV(errorMsg) // Error
-            ].join(',');
-        });
-
-        const csvContent = [headers.join(','), ...rows].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `logbook-results-${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    const downloadXLSX = async () => {
-        // Dynamically import ExcelJS to avoid SSR issues
-        const ExcelJS = await import('exceljs');
-
-        // Helper functions for labels
-        const getJenisLogLabel = (id: number) => {
-            const labels = { 1: 'Pembimbingan', 2: 'Ujian', 3: 'Kegiatan' };
-            return labels[id as keyof typeof labels] || String(id);
-        };
-
-        const getModeLabel = (mode: number) => {
-            const labels = { 0: 'Online', 1: 'Offline', 2: 'Hybrid' };
-            return labels[mode as keyof typeof labels] || String(mode);
-        };
-
-        // Create workbook and worksheet
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Logbook Results');
-
-        // Define columns with headers and widths
-        worksheet.columns = [
-            { header: 'No', key: 'no', width: 5 },
-            { header: 'Waktu', key: 'waktu', width: 12 },
-            { header: 'Keterangan', key: 'keterangan', width: 40 },
-            { header: 'Durasi', key: 'durasi', width: 15 },
-            { header: 'Media', key: 'media', width: 10 },
-            { header: 'Jenis Kegiatan', key: 'jenisKegiatan', width: 15 },
-            { header: 'Dosen Penggerak', key: 'dosen', width: 15 },
-            { header: 'Dokumen', key: 'dokumen', width: 20 },
-            { header: 'Status', key: 'status', width: 10 },
-            { header: 'Error', key: 'error', width: 30 }
-        ];
-
-        // Style header row
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF9333EA' } // Purple
-        };
-        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-
-        // Add data rows
-        results.forEach((r, idx) => {
-            const entry = r.entry;
-            const durasi = entry ? `${entry.Tstart} - ${entry.Tend}` : '-';
-            const status = r.status === 'success' ? 'Success' : 'Error';
-            const errorMsg = r.status === 'success' ? '' : (r.error || '');
-
-            worksheet.addRow({
-                no: idx + 1,
-                waktu: entry?.Waktu || '-',
-                keterangan: entry?.Keterangan || '-',
-                durasi: durasi,
-                media: entry ? getModeLabel(entry.IsLuring) : '-',
-                jenisKegiatan: entry ? getJenisLogLabel(entry.JenisLogId) : '-',
-                dosen: getDosenNames(entry?.Dosen),
-                dokumen: entry?.fileName || '-',
-                status: status,
-                error: errorMsg
-            });
-
-            // Color code status column
-            const row = worksheet.lastRow;
-            if (row) {
-                const statusCell = row.getCell('status');
-                if (status === 'Success') {
-                    statusCell.font = { color: { argb: 'FF22C55E' }, bold: true }; // Green
-                } else {
-                    statusCell.font = { color: { argb: 'FFEF4444' }, bold: true }; // Red
-                }
-            }
-        });
-
-        // Generate buffer and download
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `logbook-results-${new Date().toISOString().split('T')[0]}.xlsx`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
 
     const handleStartOver = () => {
         // Clear localStorage
@@ -439,8 +197,6 @@ export default function StepsSection() {
         setCookies(null);
         setEntries([]);
         setResults([]);
-        setIsSubmitting(false);
-        setCurrentSubmission(0);
         setHasSubmitted(false);
     };
 
