@@ -163,12 +163,23 @@ export default function StepsSection() {
     };
 
     const handleUpdateEntry = (index: number, updatedEntry: LogbookEntry) => {
+        console.log('[DEBUG] StepsSection - Updating entry:', {
+            index,
+            fileName: updatedEntry.fileName,
+            hasFileData: !!updatedEntry.fileData,
+            fileDataLength: updatedEntry.fileData?.length || 0
+        });
         const updatedEntries = [...entries];
         updatedEntries[index] = updatedEntry;
         setEntries(updatedEntries);
     };
 
     const handleAddEntry = (newEntry: LogbookEntry) => {
+        console.log('[DEBUG] StepsSection - Adding new entry:', {
+            fileName: newEntry.fileName,
+            hasFileData: !!newEntry.fileData,
+            fileDataLength: newEntry.fileData?.length || 0
+        });
         setEntries([...entries, newEntry]);
     };
 

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { LogbookEntry } from '@/types/logbook';
 import { getJenisLogLabel, getModeLabel, validateDosenInput } from '../utils';
 import EntryFormFields from './EntryFormFields';
+import { FilePreviewModal } from './FilePreviewModal';
 
 interface Lecturer {
     id: number;
@@ -56,6 +57,7 @@ export default function EntryCard({
 }: EntryCardProps) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [fileError, setFileError] = useState<string | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
     const currentEntry = isEditing ? editedEntry! : entry;
 
     const handleFileRemove = () => {
@@ -296,6 +298,14 @@ export default function EntryCard({
                                     <span className="text-sm text-gray-900 dark:text-gray-200 flex-1">{entry.fileName}</span>
                                     <button
                                         type="button"
+                                        onClick={() => setShowPreview(true)}
+                                        disabled={isSubmitting}
+                                        className="text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        View
+                                    </button>
+                                    <button
+                                        type="button"
                                         onClick={handleFileRemoveInViewMode}
                                         disabled={isSubmitting}
                                         className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -307,6 +317,16 @@ export default function EntryCard({
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* File Preview Modal */}
+            {entry.fileName && entry.fileData && (
+                <FilePreviewModal
+                    isOpen={showPreview}
+                    onClose={() => setShowPreview(false)}
+                    fileName={entry.fileName}
+                    fileData={entry.fileData}
+                />
             )}
         </div>
     );

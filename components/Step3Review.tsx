@@ -133,6 +133,13 @@ export default function Step3Review({
             const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
             sanitizedEntry.Dosen = validateDosenInput(sanitizedEntry.Dosen, maxDosen);
 
+            // DEBUG: Track file data
+            console.log('[DEBUG] Saving new entry with file data:', {
+                fileName: sanitizedEntry.fileName,
+                hasFileData: !!sanitizedEntry.fileData,
+                fileDataLength: sanitizedEntry.fileData?.length || 0
+            });
+
             onAddEntry(sanitizedEntry);
             setIsAddingEntry(false);
             setNewEntry(null);
@@ -228,6 +235,14 @@ export default function Step3Review({
             // Validate Dosen field - ensure values are between 1 and lecturers.length
             const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
             sanitizedEntry.Dosen = validateDosenInput(sanitizedEntry.Dosen, maxDosen);
+
+            // DEBUG: Track file data
+            console.log('[DEBUG] Saving edited entry with file data:', {
+                index,
+                fileName: sanitizedEntry.fileName,
+                hasFileData: !!sanitizedEntry.fileData,
+                fileDataLength: sanitizedEntry.fileData?.length || 0
+            });
 
             onUpdateEntry(index, sanitizedEntry);
             setEditingIndex(null);

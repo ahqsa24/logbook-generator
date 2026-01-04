@@ -40,6 +40,13 @@ export const useSubmission = () => {
             }
 
             try {
+                console.log('[DEBUG] useSubmission - Submitting entry:', {
+                    index: i,
+                    fileName: entry.fileName,
+                    hasFileData: !!entry.fileData,
+                    fileDataLength: entry.fileData?.length || 0
+                });
+
                 const formData = new FormData();
                 formData.append('aktivitasId', aktivitasId);
                 formData.append('cookies', JSON.stringify(currentCookies));
@@ -48,6 +55,9 @@ export const useSubmission = () => {
                 if (entry.fileData && entry.fileName) {
                     const blob = await fetch(`data:application/octet-stream;base64,${entry.fileData}`).then(r => r.blob());
                     formData.append('file', blob, entry.fileName);
+                    console.log('[DEBUG] File attached to FormData:', entry.fileName);
+                } else {
+                    console.log('[DEBUG] No file data to attach');
                 }
 
                 const response = await fetch('/api/submit-logbook', {
