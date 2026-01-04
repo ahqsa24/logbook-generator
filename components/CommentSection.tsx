@@ -1,146 +1,71 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-
-interface Reply {
-  id: string;
-  name: string;
-  comment: string;
-  timestamp: Date | string;
-  is_admin?: boolean;
-}
-
-interface Comment {
-  id: string;
-  name: string;
-  comment: string;
-  timestamp: Date | string;
-  replies?: Reply[];
-  likes?: number;
-  is_admin?: boolean;
-  is_pinned?: boolean;
-  pinned_at?: Date | string;
-}
-
-const LIKES_STORAGE_KEY = 'ipb-logbook-likes';
-const ADMIN_MODE_KEY = 'ipb-admin-mode';
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+import { useState } from 'react';
+import { useAdminMode, useComments, useLikes } from './CommentSection/hooks';
+import { DeleteModal, CommentForm, ReplyForm, ReplyCard } from './CommentSection/components';
+import { formatDate, formatTime } from './CommentSection/utils';
+import type { Comment, DeleteTarget } from './CommentSection/types';
 
 type SortOption = 'most-liked' | 'newest' | 'oldest';
 
 export default function CommentSection() {
+  // Form states
   const [commentName, setCommentName] = useState('');
   const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState<Comment[]>([]);
-
-  // Validation states
   const [nameError, setNameError] = useState('');
   const [replyNameError, setReplyNameError] = useState('');
-
-  // Reply states
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyName, setReplyName] = useState('');
   const [replyText, setReplyText] = useState('');
 
-  // Like states
-  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<SortOption>('most-liked');
-
-  // Reply visibility state
+  // Reply visibility states
   const [viewReplies, setViewReplies] = useState<Set<string>>(new Set());
-
-  // Show more replies state (tracks which comments show all replies)
   const [showMoreReplies, setShowMoreReplies] = useState<Set<string>>(new Set());
-
-  // Admin mode states
-  const [isAdminMode, setIsAdminMode] = useState(false);
-
-  // Password modal states
-  const [showAdminModal, setShowAdminModal] = useState(false);
-  const [adminPasswordInput, setAdminPasswordInput] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   // Delete modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ commentId: string; replyId?: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
-  // Load comments from Supabase and admin mode from localStorage on mount
-  useEffect(() => {
-    const fetchComments = async () => {
-      try {
-        const response = await fetch('/api/comments');
-        const data = await response.json();
-        if (data.success) {
-          // Debug: Check first comment to see if is_admin and is_pinned fields exist
-          if (data.comments && data.comments.length > 0) {
-            console.log('First comment from API:', data.comments[0]);
-            console.log('Has is_admin?', 'is_admin' in data.comments[0]);
-            console.log('Has is_pinned?', 'is_pinned' in data.comments[0]);
-          }
-          setComments(data.comments);
-        }
-      } catch (error) {
-        console.error('Failed to load comments:', error);
-      }
-    };
+  // Use custom hooks
+  const {
+    isAdminMode,
+    showAdminModal,
+    adminPasswordInput,
+    setAdminPasswordInput,
+    passwordError,
+    setPasswordError,
+    showPassword,
+    setShowPassword,
+    handleAdminLogin,
+    handleAdminLogout,
+    openAdminModal,
+    closeAdminModal
+  } = useAdminMode();
 
-    fetchComments();
+  const {
+    comments,
+    setComments,
+    sortBy,
+    setSortBy,
+    addComment,
+    addReply,
+    deleteItem,
+    togglePin,
+    getSortedComments
+  } = useComments();
 
-    if (typeof window !== 'undefined') {
-      // Load liked comments from localStorage
-      const savedLikes = localStorage.getItem(LIKES_STORAGE_KEY);
-      if (savedLikes) {
-        try {
-          const parsed = JSON.parse(savedLikes);
-          setLikedComments(new Set(parsed));
-        } catch (e) {
-          console.error('Failed to load likes:', e);
-        }
-      }
+  const { likedComments, handleLike } = useLikes(comments, setComments);
 
-      // Load admin mode
-      const adminMode = localStorage.getItem(ADMIN_MODE_KEY);
-      if (adminMode === 'true') {
-        setIsAdminMode(true);
-      }
-    }
-  }, []);
 
   const handleAddComment = async () => {
-    // Validation already handled by real-time check
     if (nameError) return;
 
     if (commentName.trim() && commentText.trim()) {
-      try {
-        const response = await fetch('/api/comments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: commentName,
-            comment: commentText,
-            is_admin: isAdminMode
-          })
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          // Debug: Check if is_admin is in response
-          console.log('New comment from API:', data.comment);
-          console.log('is_admin field:', data.comment.is_admin);
-
-          // Add new comment to state
-          setComments([{
-            ...data.comment,
-            timestamp: new Date(data.comment.timestamp),
-            replies: []
-          }, ...comments]);
-          setCommentName('');
-          setCommentText('');
-          setNameError('');
-        }
-      } catch (error) {
-        console.error('Failed to add comment:', error);
+      const success = await addComment(commentName, commentText, isAdminMode);
+      if (success) {
+        setCommentName('');
+        setCommentText('');
+        setNameError('');
       }
     }
   };
@@ -158,47 +83,14 @@ export default function CommentSection() {
   const handleAddReply = async (commentId: string) => {
     const finalReplyName = isAdminMode && !replyName.trim() ? 'Admin' : replyName;
 
-    // Validation already handled by real-time check
     if (replyNameError) return;
 
     if (finalReplyName.trim() && replyText.trim()) {
-      try {
-        const response = await fetch(`/api/comments/${commentId}/replies`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: finalReplyName,
-            comment: replyText,
-            is_admin: isAdminMode
-          })
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          // Add new reply to state
-          const updatedComments = comments.map(c => {
-            if (c.id === commentId) {
-              return {
-                ...c,
-                replies: [
-                  ...(c.replies || []),
-                  {
-                    ...data.reply,
-                    timestamp: new Date(data.reply.timestamp)
-                  }
-                ]
-              };
-            }
-            return c;
-          });
-          setComments(updatedComments);
-          setReplyName('');
-          setReplyText('');
-          setReplyNameError('');
-          // Keep reply form open - don't call setReplyingTo(null)
-        }
-      } catch (error) {
-        console.error('Failed to add reply:', error);
+      const success = await addReply(commentId, finalReplyName, replyText, isAdminMode);
+      if (success) {
+        setReplyName('');
+        setReplyText('');
+        setReplyNameError('');
       }
     }
   };
@@ -213,23 +105,6 @@ export default function CommentSection() {
     }
   };
 
-  const handleAdminLogin = () => {
-    if (adminPasswordInput === ADMIN_PASSWORD) {
-      setIsAdminMode(true);
-      localStorage.setItem(ADMIN_MODE_KEY, 'true');
-      setShowAdminModal(false);
-      setAdminPasswordInput('');
-      setPasswordError('');
-    } else {
-      setPasswordError('Incorrect password. Please try again.');
-    }
-  };
-
-  const handleAdminLogout = () => {
-    setIsAdminMode(false);
-    localStorage.removeItem(ADMIN_MODE_KEY);
-  };
-
   const handleDeleteClick = (commentId: string, replyId?: string) => {
     setDeleteTarget({ commentId, replyId });
     setShowDeleteModal(true);
@@ -237,174 +112,20 @@ export default function CommentSection() {
 
   const handleConfirmDelete = async () => {
     if (deleteTarget) {
-      try {
-        if (deleteTarget.replyId) {
-          // Delete reply
-          const response = await fetch(`/api/comments/${deleteTarget.commentId}/replies/${deleteTarget.replyId}`, {
-            method: 'DELETE'
-          });
-
-          const data = await response.json();
-          if (data.success) {
-            const updatedComments = comments.map(c => {
-              if (c.id === deleteTarget.commentId) {
-                return {
-                  ...c,
-                  replies: c.replies?.filter(r => r.id !== deleteTarget.replyId)
-                };
-              }
-              return c;
-            });
-            setComments(updatedComments);
-          }
-        } else {
-          // Delete comment
-          const response = await fetch(`/api/comments/${deleteTarget.commentId}`, {
-            method: 'DELETE'
-          });
-
-          const data = await response.json();
-          if (data.success) {
-            setComments(comments.filter(c => c.id !== deleteTarget.commentId));
-          }
-        }
-
+      const success = await deleteItem(deleteTarget.commentId, deleteTarget.replyId);
+      if (success) {
         setShowDeleteModal(false);
         setDeleteTarget(null);
-      } catch (error) {
-        console.error('Failed to delete:', error);
       }
     }
   };
 
-  const handleLike = async (commentId: string) => {
-    const comment = comments.find(c => c.id === commentId);
-    if (!comment) return;
-
-    const isLiked = likedComments.has(commentId);
-    const newLikes = isLiked ? Math.max(0, (comment.likes || 0) - 1) : (comment.likes || 0) + 1;
-
-    try {
-      const response = await fetch(`/api/comments/${commentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ likes: newLikes })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // Update local state
-        const updatedComments = comments.map(c => {
-          if (c.id === commentId) {
-            return { ...c, likes: newLikes };
-          }
-          return c;
-        });
-        setComments(updatedComments);
-
-        // Update liked state in localStorage
-        const newLiked = new Set(likedComments);
-        if (isLiked) {
-          newLiked.delete(commentId);
-        } else {
-          newLiked.add(commentId);
-        }
-        setLikedComments(newLiked);
-        localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify([...newLiked]));
-      }
-    } catch (error) {
-      console.error('Failed to update like:', error);
-    }
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeleteTarget(null);
   };
 
-  const handlePinComment = async (commentId: string) => {
-    const comment = comments.find(c => c.id === commentId);
-    if (!comment) return;
 
-    const isPinned = comment.is_pinned;
-    const currentPinnedCount = comments.filter(c => c.is_pinned).length;
-
-    // Check if trying to pin and already have 3 pinned
-    if (!isPinned && currentPinnedCount >= 3) {
-      alert('Maximum 3 comments can be pinned. Please unpin another comment first.');
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/comments/${commentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          is_pinned: !isPinned,
-          pinned_at: !isPinned ? new Date().toISOString() : null
-        })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // Update local state
-        const updatedComments = comments.map(c => {
-          if (c.id === commentId) {
-            return {
-              ...c,
-              is_pinned: !isPinned,
-              pinned_at: !isPinned ? new Date() : undefined
-            };
-          }
-          return c;
-        });
-        setComments(updatedComments);
-      } else if (data.error) {
-        alert(data.error);
-      }
-    } catch (error) {
-      console.error('Failed to pin comment:', error);
-    }
-  };
-
-  const getSortedComments = () => {
-    const commentsCopy = [...comments];
-
-    // Separate pinned and unpinned comments
-    const pinnedComments = commentsCopy.filter(c => c.is_pinned);
-    const unpinnedComments = commentsCopy.filter(c => !c.is_pinned);
-
-    // Sort pinned comments by pinned_at (most recently pinned first)
-    pinnedComments.sort((a, b) => {
-      const dateA = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
-      const dateB = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
-      return dateB - dateA;
-    });
-
-    // Sort unpinned comments based on selected sort option
-    let sortedUnpinned = unpinnedComments;
-    switch (sortBy) {
-      case 'most-liked':
-        sortedUnpinned = unpinnedComments.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-        break;
-      case 'newest':
-        // Newest first: API already returns newest first (created_at DESC)
-        sortedUnpinned = unpinnedComments;
-        break;
-      case 'oldest':
-        // Oldest first: reverse the API order to get oldest first
-        sortedUnpinned = [...unpinnedComments].reverse();
-        break;
-      default:
-        sortedUnpinned = unpinnedComments;
-    }
-
-    // Return pinned comments first, then unpinned
-    return [...pinnedComments, ...sortedUnpinned];
-  };
-
-  const formatDate = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const year = dateObj.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
 
   return (
     <div className="mt-12">
@@ -423,7 +144,7 @@ export default function CommentSection() {
             </button>
           ) : (
             <button
-              onClick={() => setShowAdminModal(true)}
+              onClick={() => openAdminModal()}
               className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               🔒 Admin Login
@@ -434,53 +155,16 @@ export default function CommentSection() {
           Share your thoughts or feedback about this tool
         </p>
 
-        <div className="space-y-4">
-          {/* Name Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={commentName}
-              onChange={(e) => handleCommentNameChange(e.target.value)}
-              placeholder="Your name"
-              className={`input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm ${nameError ? 'border-red-500 dark:border-red-500' : ''
-                }`}
-            />
-            {nameError && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 animate-fadeIn">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {nameError}
-              </p>
-            )}
-          </div>
-
-          {/* Comment Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Comment <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Write your comment here..."
-              rows={4}
-              className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm resize-none"
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            onClick={handleAddComment}
-            disabled={!commentName.trim() || !commentText.trim() || !!nameError}
-            className="btn-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Post Comment
-          </button>
-        </div>
+        <CommentForm
+          commentName={commentName}
+          setCommentName={setCommentName}
+          commentText={commentText}
+          setCommentText={setCommentText}
+          nameError={nameError}
+          isAdminMode={isAdminMode}
+          onSubmit={handleAddComment}
+          onNameChange={handleCommentNameChange}
+        />
 
         {/* Display Comments */}
         {comments.length > 0 && (
@@ -536,7 +220,7 @@ export default function CommentSection() {
                                 </span>
                               )}
                               <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {formatDate(comment.timestamp)} {new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatDate(comment.timestamp)} {formatTime(comment.timestamp)}
                               </span>
                             </div>
 
@@ -587,7 +271,7 @@ export default function CommentSection() {
                               {/* Pin Button - Admin Only */}
                               {isAdminMode && (
                                 <button
-                                  onClick={() => handlePinComment(comment.id)}
+                                  onClick={() => togglePin(comment.id)}
                                   className={`flex items-center gap-1 text-xs font-medium transition-colors ${comment.is_pinned
                                     ? 'text-yellow-600 dark:text-yellow-400'
                                     : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400'
@@ -622,52 +306,21 @@ export default function CommentSection() {
                     <div className="ml-14 mt-3 transition-all duration-300 ease-in-out">
                       {/* Reply Form */}
                       {replyingTo === comment.id && (
-                        <div className="mb-4">
-                          <div className="space-y-3">
-                            <input
-                              type="text"
-                              value={isAdminMode && !replyName ? 'Admin' : replyName}
-                              onChange={(e) => handleReplyNameChange(e.target.value)}
-                              placeholder={isAdminMode ? 'Admin' : 'Your name'}
-                              className={`w-full px-3 py-2 text-sm rounded-lg border-b-2 ${replyNameError ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
-                                } bg-transparent text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 transition-colors`}
-                            />
-                            {replyNameError && (
-                              <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 animate-fadeIn">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                {replyNameError}
-                              </p>
-                            )}
-                            <textarea
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              placeholder="Add a reply..."
-                              rows={2}
-                              className="w-full px-3 py-1 text-sm rounded-lg border-b-2 border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 transition-colors resize-none"
-                            />
-                            <div className="flex items-center gap-2 justify-end">
-                              <button
-                                onClick={() => {
-                                  setReplyingTo(null);
-                                  setReplyName('');
-                                  setReplyText('');
-                                }}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => handleAddReply(comment.id)}
-                                disabled={!(isAdminMode || replyName.trim()) || !replyText.trim() || !!replyNameError}
-                                className="px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                Reply
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                        <ReplyForm
+                          replyName={replyName}
+                          setReplyName={setReplyName}
+                          replyText={replyText}
+                          setReplyText={setReplyText}
+                          replyNameError={replyNameError}
+                          isAdminMode={isAdminMode}
+                          onSubmit={() => handleAddReply(comment.id)}
+                          onCancel={() => {
+                            setReplyingTo(null);
+                            setReplyName('');
+                            setReplyText('');
+                          }}
+                          onNameChange={handleReplyNameChange}
+                        />
                       )}
 
                       {/* Display Replies */}
@@ -676,42 +329,13 @@ export default function CommentSection() {
                           {comment.replies
                             .slice(0, showMoreReplies.has(comment.id) ? comment.replies.length : 5)
                             .map((reply) => (
-                              <div key={reply.id} className="flex gap-3">
-                                {/* Avatar */}
-                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 flex items-center justify-center text-white text-xs font-semibold">
-                                  {reply.name.charAt(0).toUpperCase()}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium text-sm text-gray-900 dark:text-gray-200">
-                                      {reply.name}
-                                    </span>
-                                    {(reply.is_admin || reply.name.toLowerCase() === 'admin') && (
-                                      <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-700">
-                                        Admin
-                                      </span>
-                                    )}
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                      {formatDate(reply.timestamp)} {new Date(reply.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                  </div>
-
-                                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                    {reply.comment}
-                                  </p>
-
-                                  {/* Text-based Delete button for Replies */}
-                                  {isAdminMode && (
-                                    <button
-                                      onClick={() => handleDeleteClick(comment.id, reply.id)}
-                                      className="mt-1 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                                    >
-                                      Delete
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
+                              <ReplyCard
+                                key={reply.id}
+                                reply={reply}
+                                commentId={comment.id}
+                                isAdminMode={isAdminMode}
+                                onDelete={handleDeleteClick}
+                              />
                             ))}
 
                           {/* Show More Button */}
@@ -812,11 +436,7 @@ export default function CommentSection() {
                   Login
                 </button>
                 <button
-                  onClick={() => {
-                    setShowAdminModal(false);
-                    setAdminPasswordInput('');
-                    setPasswordError('');
-                  }}
+                  onClick={closeAdminModal}
                   className="btn-secondary flex-1"
                 >
                   Cancel
@@ -827,35 +447,12 @@ export default function CommentSection() {
         )}
 
         {/* Delete Confirmation Modal */}
-        {showDeleteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200 mb-4">
-                ⚠️ Confirm Delete
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Are you sure you want to delete this {deleteTarget?.replyId !== undefined ? 'reply' : 'comment'}? This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleConfirmDelete}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setDeleteTarget(null);
-                  }}
-                  className="btn-secondary flex-1"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <DeleteModal
+          isOpen={showDeleteModal}
+          deleteTarget={deleteTarget}
+          onConfirm={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+        />
       </div>
     </div>
   );

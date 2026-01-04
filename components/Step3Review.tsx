@@ -1,135 +1,19 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { LogbookEntry, Lecturer } from '@/types/logbook';
-import { validateLogbookEntry } from '@/lib/validation';
-
-interface Step3ReviewProps {
-    entries: LogbookEntry[];
-    isSubmitting: boolean;
-    hasSubmitted: boolean;
-    currentSubmission: number;
-    lecturers: Lecturer[];
-    onFileUpload: (index: number, file: File) => void;
-    onSubmit: () => void;
-    onBack: () => void;
-    onUpdateEntry: (index: number, updatedEntry: LogbookEntry) => void;
-    onAddEntry: (newEntry: LogbookEntry) => void;
-    onDeleteEntry: (index: number) => void;
-}
-
-const getJenisLogLabel = (id: number) => {
-    const labels = { 1: 'Pembimbingan', 2: 'Ujian', 3: 'Kegiatan' };
-    return labels[id as keyof typeof labels] || id;
-};
-
-const getModeLabel = (mode: number) => {
-    const labels = { 0: 'Online', 1: 'Offline', 2: 'Hybrid' };
-    return labels[mode as keyof typeof labels] || mode;
-};
-
-// Helper: Convert DD/MM/YYYY to YYYY-MM-DD for HTML5 date input
-const formatDateForInput = (ddmmyyyy: string): string => {
-    if (!ddmmyyyy || !ddmmyyyy.includes('/')) return '';
-    const parts = ddmmyyyy.split('/');
-    if (parts.length !== 3) return '';
-    const [day, month, year] = parts;
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-};
-
-// Helper: Convert YYYY-MM-DD to DD/MM/YYYY for display
-const formatDateForDisplay = (yyyymmdd: string): string => {
-    if (!yyyymmdd || !yyyymmdd.includes('-')) return yyyymmdd;
-    const parts = yyyymmdd.split('-');
-    if (parts.length !== 3) return yyyymmdd;
-    const [year, month, day] = parts;
-    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
-};
-
-// Helper: Auto-format time input (8 → 08:00, 0800 → 08:00, 830 → 08:30)
-const formatTimeInput = (input: string): string => {
-    if (!input) return '';
-
-    // Remove any non-digit characters except colon
-    const cleaned = input.replace(/[^\d:]/g, '');
-
-    // If already in HH:MM format, validate and return
-    if (cleaned.includes(':')) {
-        const parts = cleaned.split(':');
-        if (parts.length === 2) {
-            const hours = parseInt(parts[0], 10);
-            const minutes = parseInt(parts[1], 10);
-            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            }
-        }
-        return '';
-    }
-
-    // Handle numeric-only input
-    const digits = cleaned.replace(/:/g, '');
-
-    if (digits.length === 1 || digits.length === 2) {
-        // Single or double digit: treat as hours (8 → 08:00, 14 → 14:00)
-        const hours = parseInt(digits, 10);
-        if (hours >= 0 && hours <= 23) {
-            return `${hours.toString().padStart(2, '0')}:00`;
-        }
-    } else if (digits.length === 3) {
-        // Three digits: HMM format (830 → 08:30)
-        const hours = parseInt(digits.substring(0, 1), 10);
-        const minutes = parseInt(digits.substring(1, 3), 10);
-        if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        }
-    } else if (digits.length === 4) {
-        // Four digits: HHMM format (0830 → 08:30)
-        const hours = parseInt(digits.substring(0, 2), 10);
-        const minutes = parseInt(digits.substring(2, 4), 10);
-        if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        }
-    }
-
-    return '';
-};
-
-// Helper: Validate select value and return default if invalid
-const validateSelectValue = (value: number, validValues: number[], defaultValue: number): number => {
-    return validValues.includes(value) ? value : defaultValue;
-};
-
-// Helper: Validate Dosen input - ensure values are between 1 and maxDosen
-const validateDosenInput = (dosenString: string | undefined, maxDosen: number): string => {
-    if (!dosenString || dosenString.trim() === '') {
-        return ''; // Empty is allowed (optional field)
-    }
-
-    // Parse comma-separated IDs
-    const ids = dosenString
-        .split(',')
-        .map(id => {
-            const parsed = parseInt(id.trim(), 10);
-            return isNaN(parsed) ? null : parsed;
-        })
-        .filter((id): id is number => id !== null);
-
-    if (ids.length === 0) {
-        return '1'; // Default to 1 if no valid IDs
-    }
-
-    // Filter to only valid IDs (1 to maxDosen)
-    const validIds = ids.filter(id => id >= 1 && id <= maxDosen);
-
-    if (validIds.length === 0) {
-        return '1'; // Default to 1 if all IDs are invalid
-    }
-
-    // Sort and remove duplicates
-    const uniqueIds = Array.from(new Set(validIds)).sort((a, b) => a - b);
-    return uniqueIds.join(',');
-};
-
+import { LogbookEntry } from '@/types/logbook';
+import {
+    formatDateForInput,
+    formatDateForDisplay,
+    formatTimeInput,
+    getJenisLogLabel,
+    getModeLabel,
+    validateSelectValue,
+    validateDosenInput
+} from './Step3Review/utils';
+import { useEntryValidation, useJumpToError, useEntryFilters } from './Step3Review/hooks';
+import { ProgressIndicator, SearchFilters, ErrorWarning, EmptyWarning, DeleteConfirmModal } from './Step3Review/components';
+import type { Step3ReviewProps } from './Step3Review/types';
 
 export default function Step3Review({
     entries,
@@ -151,178 +35,49 @@ export default function Step3Review({
     const [isAddingEntry, setIsAddingEntry] = useState(false);
     const [newEntry, setNewEntry] = useState<LogbookEntry | null>(null);
 
-    // Search and Filter states
-    const [searchText, setSearchText] = useState('');
-    const [filterJenisLog, setFilterJenisLog] = useState<number | 'all'>('all');
-    const [filterMode, setFilterMode] = useState<number | 'all'>('all');
-    const [filterDosen, setFilterDosen] = useState<number | 'all'>('all');
-    const [filterDateFrom, setFilterDateFrom] = useState('');
-    const [filterDateTo, setFilterDateTo] = useState('');
-
-    // Sort state - default: newest to oldest (desc)
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
     // Delete confirmation state
     const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
-
-    // Jump to error state
-    const [currentErrorIndex, setCurrentErrorIndex] = useState(0);
-    const entryRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     // Add Entry form ref for auto-scroll
     const addEntryFormRef = useRef<HTMLDivElement | null>(null);
 
-    // Validate all entries with maxDosen parameter
-    // Use lecturers.length if available, otherwise default to 1 (strict validation)
-    const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
+    // Use custom hooks for validation, filters, and jump-to-error
+    const {
+        validationResults,
+        hasErrors,
+        allEntriesEmpty,
+        isNewEntryValid,
+        isEditedEntryValid,
+        errorIndices
+    } = useEntryValidation({ entries, lecturers, newEntry, editedEntry });
 
-    const validationResults = entries.map(entry => {
-        const result = validateLogbookEntry(entry, maxDosen);
-        if (!result.isValid && entry.Dosen) {
-            console.log('❌ Validation failed for entry with Dosen:', entry.Dosen, 'errors:', result.errors);
-        }
-        return result;
-    });
-    const hasErrors = validationResults.some(result => !result.isValid);
+    const {
+        searchText,
+        setSearchText,
+        filterJenisLog,
+        setFilterJenisLog,
+        filterMode,
+        setFilterMode,
+        filterDosen,
+        setFilterDosen,
+        filterDateFrom,
+        setFilterDateFrom,
+        filterDateTo,
+        setFilterDateTo,
+        sortOrder,
+        setSortOrder,
+        filteredIndices,
+        sortedFilteredIndices,
+        filteredEntries,
+        hasActiveFilters
+    } = useEntryFilters({ entries });
 
-    // Check if entries array is empty OR all entries have empty required fields
-    const allEntriesEmpty = entries.length === 0 || entries.every(entry => {
-        return !entry.Waktu?.trim() &&
-            !entry.Tstart?.trim() &&
-            !entry.Tend?.trim() &&
-            !entry.Lokasi?.trim() &&
-            !entry.Keterangan?.trim();
-    });
-
-    // Identify entries with errors for jump functionality
-    const errorIndices = validationResults
-        .map((result, idx) => !result.isValid ? idx : -1)
-        .filter(idx => idx !== -1);
-
-    // Filter entries based on search and filters
-    const filteredIndices = entries
-        .map((entry, idx) => ({ entry, idx }))
-        .filter(({ entry }) => {
-            // Search text filter (case-insensitive)
-            if (searchText.trim()) {
-                const search = searchText.toLowerCase();
-                const matchesLokasi = entry.Lokasi?.toLowerCase().includes(search);
-                const matchesKeterangan = entry.Keterangan?.toLowerCase().includes(search);
-                if (!matchesLokasi && !matchesKeterangan) return false;
-            }
-
-            // JenisLog filter
-            if (filterJenisLog !== 'all' && entry.JenisLogId !== filterJenisLog) {
-                return false;
-            }
-
-            // Mode filter
-            if (filterMode !== 'all' && entry.IsLuring !== filterMode) {
-                return false;
-            }
-
-            // Dosen filter
-            if (filterDosen !== 'all') {
-                const dosenIds = entry.Dosen
-                    ? entry.Dosen.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id))
-                    : [];
-                if (!dosenIds.includes(filterDosen as number)) {
-                    return false;
-                }
-            }
-
-            // Date range filter
-            if (filterDateFrom || filterDateTo) {
-                // Convert DD/MM/YYYY to Date for comparison
-                const entryDateParts = entry.Waktu.split('/');
-                if (entryDateParts.length === 3) {
-                    const entryDate = new Date(
-                        parseInt(entryDateParts[2], 10),
-                        parseInt(entryDateParts[1], 10) - 1,
-                        parseInt(entryDateParts[0], 10)
-                    );
-
-                    if (filterDateFrom) {
-                        const fromDate = new Date(filterDateFrom);
-                        if (entryDate < fromDate) return false;
-                    }
-
-                    if (filterDateTo) {
-                        const toDate = new Date(filterDateTo);
-                        if (entryDate > toDate) return false;
-                    }
-                }
-            }
-
-            return true;
-        })
-        .map(({ idx }) => idx);
-
-    // Sort filtered indices by date
-    const sortedFilteredIndices = [...filteredIndices].sort((idxA, idxB) => {
-        const entryA = entries[idxA];
-        const entryB = entries[idxB];
-
-        // Parse DD/MM/YYYY to Date for comparison
-        const parseDate = (dateStr: string): Date => {
-            const parts = dateStr.split('/');
-            if (parts.length === 3) {
-                return new Date(
-                    parseInt(parts[2], 10),
-                    parseInt(parts[1], 10) - 1,
-                    parseInt(parts[0], 10)
-                );
-            }
-            return new Date(0); // fallback for invalid dates
-        };
-
-        const dateA = parseDate(entryA.Waktu);
-        const dateB = parseDate(entryB.Waktu);
-
-        // Sort based on sortOrder
-        if (sortOrder === 'desc') {
-            return dateB.getTime() - dateA.getTime(); // newest first
-        } else {
-            return dateA.getTime() - dateB.getTime(); // oldest first
-        }
-    });
-
-    const filteredEntries = sortedFilteredIndices.map(idx => entries[idx]);
-    const hasActiveFilters = searchText.trim() !== '' || filterJenisLog !== 'all' || filterMode !== 'all' || filterDosen !== 'all' || filterDateFrom !== '' || filterDateTo !== '';
-
-    // Validation for new entry
-    const isNewEntryValid = (() => {
-        if (!newEntry) return false;
-
-        const hasRequiredFields =
-            newEntry.Waktu?.trim() &&
-            newEntry.Tstart?.trim() &&
-            newEntry.Tend?.trim() &&
-            newEntry.Lokasi?.trim() &&
-            newEntry.Keterangan?.trim();
-
-        if (!hasRequiredFields) return false;
-
-        const validation = validateLogbookEntry(newEntry, maxDosen);
-        return validation.isValid;
-    })();
-
-    // Validation for edited entry
-    const isEditedEntryValid = (() => {
-        if (!editedEntry) return false;
-
-        const hasRequiredFields =
-            editedEntry.Waktu?.trim() &&
-            editedEntry.Tstart?.trim() &&
-            editedEntry.Tend?.trim() &&
-            editedEntry.Lokasi?.trim() &&
-            editedEntry.Keterangan?.trim();
-
-        if (!hasRequiredFields) return false;
-
-        const validation = validateLogbookEntry(editedEntry, maxDosen);
-        return validation.isValid;
-    })();
+    const {
+        currentErrorIndex,
+        setCurrentErrorIndex,
+        entryRefs,
+        handleJumpToNextError
+    } = useJumpToError({ errorIndices });
 
     // Handler for adding new entry
     const handleStartAddEntry = () => {
@@ -389,20 +144,6 @@ export default function Step3Review({
         setNewEntry(null);
     };
 
-    // Jump to next error handler
-    const handleJumpToNextError = () => {
-        if (errorIndices.length === 0) return;
-
-        const nextIndex = (currentErrorIndex + 1) % errorIndices.length;
-        const entryIndex = errorIndices[nextIndex];
-
-        entryRefs.current[entryIndex]?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-        });
-
-        setCurrentErrorIndex(nextIndex);
-    };
 
     // Delete handlers
     const handleDeleteClick = (index: number) => {
@@ -555,187 +296,30 @@ export default function Step3Review({
                 </div>
 
                 {/* Search and Filter Section */}
-                <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
-                    {/* Header with Title and Clear Button */}
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-200">Search & Filter</h3>
-                        <button
-                            onClick={() => {
-                                setSearchText('');
-                                setFilterJenisLog('all');
-                                setFilterMode('all');
-                                setFilterDosen('all');
-                                setFilterDateFrom('');
-                                setFilterDateTo('');
-                            }}
-                            className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg transition-colors shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-purple-600 disabled:hover:shadow-sm"
-                            disabled={!hasActiveFilters}
-                        >
-                            Clear Filters
-                        </button>
-                    </div>
+                <SearchFilters
+                    searchText={searchText}
+                    setSearchText={setSearchText}
+                    filterJenisLog={filterJenisLog}
+                    setFilterJenisLog={setFilterJenisLog}
+                    filterMode={filterMode}
+                    setFilterMode={setFilterMode}
+                    filterDosen={filterDosen}
+                    setFilterDosen={setFilterDosen}
+                    filterDateFrom={filterDateFrom}
+                    setFilterDateFrom={setFilterDateFrom}
+                    filterDateTo={filterDateTo}
+                    setFilterDateTo={setFilterDateTo}
+                    hasActiveFilters={hasActiveFilters}
+                    lecturers={lecturers}
+                />
 
-                    {/* Search Input */}
-                    <div className="mb-3">
-                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">
-                            Search (Lokasi, Keterangan)
-                        </label>
-                        <input
-                            type="text"
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            placeholder="Type to search..."
-                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-2 dark:bg-gray-700 dark:text-gray-200"
-                        />
-                    </div>
+                <ErrorWarning
+                    errorCount={errorIndices.length}
+                    currentErrorIndex={currentErrorIndex}
+                    onJumpToError={handleJumpToNextError}
+                />
 
-                    {/* Row 2: Jenis Log, Dosen, Mode */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                        {/* Jenis Log Filter */}
-                        <div>
-                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">
-                                Jenis Log
-                            </label>
-                            <select
-                                value={filterJenisLog}
-                                onChange={(e) => setFilterJenisLog(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-2 dark:bg-gray-700 dark:text-gray-200"
-                            >
-                                <option value="all">All</option>
-                                <option value={1}>Pembimbingan</option>
-                                <option value={2}>Ujian</option>
-                                <option value={3}>Kegiatan</option>
-                            </select>
-                        </div>
-
-                        {/* Dosen Filter */}
-                        <div>
-                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">
-                                Dosen Pembimbing
-                            </label>
-                            <select
-                                value={filterDosen}
-                                onChange={(e) => setFilterDosen(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-2 dark:bg-gray-700 dark:text-gray-200"
-                            >
-                                <option value="all">All</option>
-                                {lecturers.map((lecturer) => (
-                                    <option key={lecturer.id} value={lecturer.id}>
-                                        {lecturer.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Mode Filter */}
-                        <div>
-                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">
-                                Mode
-                            </label>
-                            <select
-                                value={filterMode}
-                                onChange={(e) => setFilterMode(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-2 dark:bg-gray-700 dark:text-gray-200"
-                            >
-                                <option value="all">All</option>
-                                <option value={0}>Online</option>
-                                <option value={1}>Offline</option>
-                                <option value={2}>Hybrid</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Row 3: Date From, Date To */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {/* Date Range - From */}
-                        <div>
-                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">
-                                Date From
-                            </label>
-                            <input
-                                type="date"
-                                value={filterDateFrom}
-                                onChange={(e) => setFilterDateFrom(e.target.value)}
-                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-2 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
-                            />
-                        </div>
-
-                        {/* Date Range - To */}
-                        <div>
-                            <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-1">
-                                Date To
-                            </label>
-                            <input
-                                type="date"
-                                value={filterDateTo}
-                                onChange={(e) => setFilterDateTo(e.target.value)}
-                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-2 dark:bg-gray-700 dark:text-gray-200 dark:[color-scheme:dark]"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Active Filters Info */}
-                    {hasActiveFilters && (
-                        <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
-                            <span className="font-semibold">Active filters:</span>
-                            {searchText.trim() && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Search: &quot;{searchText}&quot;</span>}
-                            {filterJenisLog !== 'all' && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Jenis: {getJenisLogLabel(filterJenisLog as number)}</span>}
-                            {filterMode !== 'all' && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Mode: {getModeLabel(filterMode as number)}</span>}
-                            {filterDosen !== 'all' && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">Dosen: {lecturers.find(l => l.id === filterDosen)?.name || filterDosen}</span>}
-                            {filterDateFrom && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">From: {filterDateFrom}</span>}
-                            {filterDateTo && <span className="ml-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded">To: {filterDateTo}</span>}
-                        </div>
-                    )}
-                </div>
-
-                {hasErrors && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-4">
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-2 flex-1">
-                                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <div>
-                                    <p className="text-sm font-semibold text-red-900 dark:text-red-300">
-                                        Validation Errors Detected
-                                    </p>
-                                    <p className="text-xs text-red-700 dark:text-red-400 mt-1">
-                                        Some entries have validation errors. Please fix them before submitting. Click &quot;Edit&quot; to modify the entry.
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-2">
-                                <button
-                                    onClick={handleJumpToNextError}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-600 text-white rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg text-sm whitespace-nowrap"
-                                >
-                                    Jump to Error
-                                </button>
-                                <span className="text-xs text-red-700 dark:text-red-400 font-medium">
-                                    Error {currentErrorIndex + 1} of {errorIndices.length}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {allEntriesEmpty && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-4">
-                        <div className="flex items-start gap-2">
-                            <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <div>
-                                <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-300">
-                                    Empty Entries Detected
-                                </p>
-                                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
-                                    All entries are empty. Please fill in the required fields before submitting.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {allEntriesEmpty && <EmptyWarning />}
 
                 {/* Entries List - Scrollable Container */}
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50/50 dark:bg-gray-900/50">
@@ -1276,33 +860,11 @@ export default function Step3Review({
                 </div>
             </div>
 
-            {
-                isSubmitting && (
-                    <div className="mb-6">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                                Submitting {currentSubmission} of {entries.length}
-                            </span>
-                            <span className="text-sm font-medium text-purple-700 dark:text-purple-400">
-                                {Math.round((currentSubmission / entries.length) * 100)}%
-                            </span>
-                        </div>
-                        <div className="w-full bg-purple-100 dark:bg-gray-700 rounded-full h-2 mb-3">
-                            <div
-                                className="bg-purple-600 dark:bg-purple-500 h-2 rounded-full transition-all duration-300"
-                                style={{
-                                    width: `${(currentSubmission / entries.length) * 100}%`,
-                                }}
-                            />
-                        </div>
-                        {currentSubmission > 0 && currentSubmission % 25 === 0 && currentSubmission < entries.length && (
-                            <div className="text-xs text-purple-600 dark:text-purple-400 font-medium animate-pulse mt-3">
-                                Refreshing session cookies...
-                            </div>
-                        )}
-                    </div>
-                )
-            }
+            <ProgressIndicator
+                currentSubmission={currentSubmission}
+                totalEntries={entries.length}
+                isSubmitting={isSubmitting}
+            />
 
             <div className="flex gap-4">
                 <button
@@ -1322,50 +884,12 @@ export default function Step3Review({
             </div>
 
             {/* Delete Confirmation Modal */}
-            {
-                deleteConfirmIndex !== null && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200 mb-4">
-                                ⚠️ Confirm Delete
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                Are you sure you want to delete this logbook entry?
-                            </p>
-                            {entries[deleteConfirmIndex] && (
-                                <div className="bg-gray-50 dark:bg-gray-700 rounded p-3 mb-4">
-                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-200">
-                                        Entry #{deleteConfirmIndex + 1}
-                                    </p>
-                                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                        Date: {entries[deleteConfirmIndex].Waktu}
-                                    </p>
-                                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                                        Description: {entries[deleteConfirmIndex].Keterangan || '-'}
-                                    </p>
-                                </div>
-                            )}
-                            <p className="text-xs text-red-600 dark:text-red-400 mb-6">
-                                This action cannot be undone.
-                            </p>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={handleCancelDelete}
-                                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleConfirmDelete}
-                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            <DeleteConfirmModal
+                isOpen={deleteConfirmIndex !== null}
+                entryIndex={deleteConfirmIndex}
+                onConfirm={handleConfirmDelete}
+                onCancel={handleCancelDelete}
+            />
         </div >
     );
 }
