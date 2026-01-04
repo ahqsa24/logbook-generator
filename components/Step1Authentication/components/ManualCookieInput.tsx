@@ -15,6 +15,10 @@ export const ManualCookieInput = ({
     onSubmit,
     isDisabled
 }: ManualCookieInputProps) => {
+    // Validate cookie format
+    const isCookieValid = aspNetCoreCookies.trim().length > 0 && aspNetCoreCookies.trim().startsWith('CfDJ8');
+    const showValidation = aspNetCoreCookies.trim().length > 0;
+
     return (
         <div className="space-y-4">
             {/* Instructions */}
@@ -37,21 +41,31 @@ export const ManualCookieInput = ({
                     .AspNetCore.Cookies <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                    rows={4}
+                    rows={6}
                     value={aspNetCoreCookies}
                     onChange={(e) => setAspNetCoreCookies(e.target.value)}
                     placeholder="Paste the VALUE only (starts with CfDJ8...)"
-                    className="input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm"
+                    className={`input-field dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 text-sm`}
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    💡 This is a long encrypted string, usually starts with <strong>CfDJ8</strong>
-                </p>
+                {showValidation && !isCookieValid ? (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                        ❌ Invalid cookie format. Cookie must start with "CfDJ8"
+                    </p>
+                ) : showValidation && isCookieValid ? (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
+                        ✅ Cookie format is valid
+                    </p>
+                ) : (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        💡 This is a long encrypted string, usually starts with <strong>CfDJ8</strong>
+                    </p>
+                )}
             </div>
 
             {/* Submit Button */}
             <button
                 onClick={onSubmit}
-                disabled={isDisabled}
+                disabled={isDisabled || !isCookieValid}
                 className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 Continue to File Upload
