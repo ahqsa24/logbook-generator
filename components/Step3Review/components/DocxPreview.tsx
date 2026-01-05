@@ -146,8 +146,8 @@ const DocxPreview = ({ fileData, fileName }: DocxPreviewProps) => {
 
             <div
                 ref={containerRef}
-                className={`w-full bg-white rounded-lg shadow-lg overflow-auto ${loading ? 'hidden' : ''}`}
-                style={{ minHeight: '500px' }}
+                className={`w-full max-w-full bg-white rounded-lg shadow-lg overflow-x-hidden overflow-y-auto ${loading ? 'hidden' : ''}`}
+                style={{ minHeight: '500px', maxWidth: '100%' }}
             />
 
             {!loading && (

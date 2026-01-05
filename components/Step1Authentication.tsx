@@ -61,27 +61,30 @@ export default function Step1Authentication({ onSubmit, savedAktivitasId, savedC
 
             {/* Resume Session Banner - Show if there's saved session */}
             {hasSavedSession && (
-                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                            <svg className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="mb-6 p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg overflow-hidden">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-start gap-2 sm:gap-3">
+                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <div>
-                                <p className="font-semibold text-green-800 dark:text-green-300">
+                            <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-green-800 dark:text-green-300 text-sm sm:text-base">
                                     Previous Session Found
                                 </p>
-                                <p className="text-sm text-green-700 dark:text-green-400 mt-1">
-                                    Aktivitas ID: <code className="bg-green-100 dark:bg-green-800 px-1 rounded">{savedAktivitasId}</code>
-                                </p>
-                                <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                                <div className="text-xs sm:text-sm text-green-700 dark:text-green-400 mt-1 overflow-hidden">
+                                    <span className="block mb-1">Aktivitas ID:</span>
+                                    <code className="block bg-green-100 dark:bg-green-800 px-2 py-1 rounded text-xs break-all max-w-full overflow-wrap-anywhere">
+                                        {savedAktivitasId}
+                                    </code>
+                                </div>
+                                <p className="text-xs text-green-600 dark:text-green-500 mt-2">
                                     You can continue with your previous session or start fresh below.
                                 </p>
                             </div>
                         </div>
                         <button
                             onClick={handleResumeSession}
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors shadow-sm flex-shrink-0"
+                            className="w-full sm:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors shadow-sm text-sm"
                         >
                             Resume Session →
                         </button>
