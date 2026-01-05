@@ -7,10 +7,6 @@ interface DocxPreviewProps {
     fileName: string;
 }
 
-/**
- * DocxPreview - Client-side only DOCX renderer
- * Uses docx-preview library to render DOCX files in the browser
- */
 const DocxPreview = ({ fileData, fileName }: DocxPreviewProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [loading, setLoading] = useState(true);
@@ -168,66 +164,131 @@ const DocxPreview = ({ fileData, fileName }: DocxPreviewProps) => {
                 .docx-preview-content {
                     padding: 0;
                     font-family: 'Calibri', 'Arial', sans-serif;
+                    overflow-x: hidden;
                 }
                 
                 /* Wrapper styling */
                 .docx-preview-content .docx-wrapper {
                     background: #f5f5f5 !important;
-                    padding: 20px;
+                    padding: 10px;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
+                    overflow-x: hidden;
+                }
+                
+                /* Responsive wrapper padding */
+                @media (min-width: 640px) {
+                    .docx-preview-content .docx-wrapper {
+                        padding: 20px;
+                    }
                 }
                 
                 /* Page styling - each section/page */
                 .docx-preview-content .docx-wrapper > section {
                     background: white !important;
-                    padding: 60px 72px;
+                    padding: 20px 15px;
                     margin-bottom: 20px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-                    max-width: 816px; /* A4 width at 96dpi */
+                    max-width: 100%;
                     width: 100%;
                     box-sizing: border-box;
+                    overflow-x: hidden;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                
+                /* Desktop page width */
+                @media (min-width: 768px) {
+                    .docx-preview-content .docx-wrapper > section {
+                        padding: 40px 30px;
+                        max-width: 816px; /* A4 width at 96dpi */
+                    }
+                }
+                
+                @media (min-width: 1024px) {
+                    .docx-preview-content .docx-wrapper > section {
+                        padding: 60px 72px;
+                    }
                 }
                 
                 /* Typography improvements */
                 .docx-preview-content p {
                     margin: 0;
                     line-height: 1.5;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    max-width: 100%;
                 }
                 
                 .docx-preview-content span {
                     line-height: inherit;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
                 }
                 
-                /* Table styling */
+                /* Handle long words/URLs */
+                .docx-preview-content a,
+                .docx-preview-content code {
+                    word-break: break-all;
+                    overflow-wrap: break-word;
+                }
+                
+                /* Table styling - responsive */
                 .docx-preview-content table {
                     border-collapse: collapse;
                     width: 100%;
+                    max-width: 100%;
                     margin: 10px 0;
+                    display: block;
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
                 }
                 
                 .docx-preview-content td,
                 .docx-preview-content th {
                     padding: 6px 8px;
                     vertical-align: top;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    min-width: 50px;
                 }
                 
-                /* Image handling */
+                /* Mobile table adjustments */
+                @media (max-width: 640px) {
+                    .docx-preview-content td,
+                    .docx-preview-content th {
+                        padding: 4px 6px;
+                        font-size: 0.875rem;
+                    }
+                }
+                
+                /* Image handling - responsive */
                 .docx-preview-content img {
-                    max-width: 100%;
-                    height: auto;
+                    max-width: 100% !important;
+                    height: auto !important;
+                    display: block;
                 }
                 
                 /* List styling */
                 .docx-preview-content ul,
                 .docx-preview-content ol {
                     margin: 0;
-                    padding-left: 36px;
+                    padding-left: 24px;
+                    max-width: 100%;
+                }
+                
+                @media (min-width: 640px) {
+                    .docx-preview-content ul,
+                    .docx-preview-content ol {
+                        padding-left: 36px;
+                    }
                 }
                 
                 .docx-preview-content li {
                     margin: 4px 0;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
                 }
                 
                 /* Heading spacing */
@@ -239,6 +300,13 @@ const DocxPreview = ({ fileData, fileName }: DocxPreviewProps) => {
                 .docx-preview-content h6 {
                     margin-top: 12px;
                     margin-bottom: 6px;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                
+                /* Prevent horizontal overflow */
+                .docx-preview-content * {
+                    max-width: 100%;
                 }
             `}</style>
         </div>

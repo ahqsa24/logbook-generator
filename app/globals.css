@@ -23,6 +23,37 @@
     background-size: 200% 200%;
     animation: gradient 3s ease infinite;
   }
+
+  /* Prevent horizontal overflow from long text */
+  .break-word {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* Break all characters (for URLs, long strings) */
+  .break-all {
+    word-break: break-all;
+  }
+
+  /* Prevent overflow in containers */
+  .overflow-safe {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+}
+
+@layer base {
+  /* Global word-break for better mobile experience */
+  p, span, div, td, th, li {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+  }
 }
 
 @keyframes gradient {
