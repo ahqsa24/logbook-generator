@@ -42,6 +42,28 @@ export default function AddEntryForm({
         onFieldChange('fileName', undefined);
     };
 
+    // For add entry, we use onFieldChange directly since no index exists yet
+    const handleFileUploadViaCallback = async (file: File) => {
+        console.log('[DEBUG] AddEntryForm - handleFileUploadViaCallback start:', {
+            fileName: file.name,
+            fileSize: file.size
+        });
+
+        const { fileToBase64 } = await import('@/lib/logbook-service');
+        const base64 = await fileToBase64(file);
+
+        console.log('[DEBUG] AddEntryForm - base64 ready:', {
+            fileName: file.name,
+            base64Length: base64.length
+        });
+
+        onFieldChange('fileData', base64);
+        onFieldChange('fileName', file.name);
+        onFieldChange('fileSource', 'add_edit');
+
+        console.log('[DEBUG] AddEntryForm - onFieldChange calls completed');
+    };
+
     return (
         <div
             ref={formRef}
@@ -85,6 +107,7 @@ export default function AddEntryForm({
                 onFieldChange={onFieldChange}
                 fileInputRef={fileInputRef}
                 onFileRemove={handleFileRemove}
+                onFileUpload={handleFileUploadViaCallback}
             />
         </div>
     );

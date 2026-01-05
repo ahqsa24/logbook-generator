@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { LogbookEntry, SubmissionResult, CookieData } from '@/types/logbook';
+import { fileStorage } from '@/lib/fileStorage';
 import { useCookieRefresh } from './useCookieRefresh';
 
 export const useSubmission = () => {
@@ -28,7 +29,19 @@ export const useSubmission = () => {
 
         for (let i = 0; i < entries.length; i++) {
             setCurrentSubmission(i + 1);
-            const entry = entries[i];
+            let entry = entries[i];
+
+            // Load file data from IndexedDB if not in memory
+            if (!entry.fileData && entry.fileName) {
+                const storedFile = await fileStorage.getEntry(`entry-${i}`);
+                if (storedFile?.fileData) {
+                    entry = {
+                        ...entry,
+                        fileData: storedFile.fileData,
+                        fileName: storedFile.fileName
+                    };
+                }
+            }
 
             // Refresh cookies every 25 entries (except for the first entry)
             if (i > 0 && i % 25 === 0 && i < entries.length) {
@@ -40,6 +53,13 @@ export const useSubmission = () => {
             }
 
             try {
+                console.log('[DEBUG] useSubmission - Submitting entry:', {
+                    index: i,
+                    fileName: entry.fileName,
+                    hasFileData: !!entry.fileData,
+                    fileDataLength: entry.fileData?.length || 0
+                });
+
                 const formData = new FormData();
                 formData.append('aktivitasId', aktivitasId);
                 formData.append('cookies', JSON.stringify(currentCookies));
@@ -48,6 +68,9 @@ export const useSubmission = () => {
                 if (entry.fileData && entry.fileName) {
                     const blob = await fetch(`data:application/octet-stream;base64,${entry.fileData}`).then(r => r.blob());
                     formData.append('file', blob, entry.fileName);
+                    console.log('[DEBUG] File attached to FormData:', entry.fileName);
+                } else {
+                    console.log('[DEBUG] No file data to attach');
                 }
 
                 const response = await fetch('/api/submit-logbook', {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LogbookEntry, SubmissionResult, CookieData, Lecturer } from '@/types/logbook';
 import { parseExcelFile, parseZipFile, parseCookieString } from '@/lib/logbook-service';
 import { validateLogbookEntry } from '@/lib/validation';
+import { fileStorage } from '@/lib/fileStorage';
 import StepIndicator from '@/components/StepIndicator';
 import Step1Authentication from '@/components/Step1Authentication';
 import Step2FileUpload from '@/components/Step2FileUpload';
@@ -39,7 +40,24 @@ export default function StepsSection() {
                         if (parsed.step) setStep(parsed.step);
                         if (parsed.aktivitasId) setAktivitasId(parsed.aktivitasId);
                         if (parsed.cookies) setCookies(parsed.cookies);
-                        if (parsed.entries) setEntries(parsed.entries);
+                        if (parsed.entries) {
+                            // Load file data from IndexedDB for each entry
+                            Promise.all(
+                                parsed.entries.map(async (entry: LogbookEntry, idx: number) => {
+                                    const storedFile = await fileStorage.getEntry(`entry-${idx}`);
+                                    if (storedFile?.fileData) {
+                                        return {
+                                            ...entry,
+                                            fileData: storedFile.fileData,
+                                            fileName: storedFile.fileName
+                                        };
+                                    }
+                                    return entry;
+                                })
+                            ).then(entriesWithFiles => {
+                                setEntries(entriesWithFiles);
+                            });
+                        }
                         if (parsed.results) setResults(parsed.results);
                     }
                 } catch (e) {
@@ -49,13 +67,20 @@ export default function StepsSection() {
         }
     }, [setResults]);
 
-    // Save state to localStorage only after Step 2 (file upload completed)
+    // Save state to localStorage and IndexedDB only after Step 2 (file upload completed)
     useEffect(() => {
         if (typeof window !== 'undefined' && step >= 3) {
-            // Remove fileData from entries to save space
+            // Save file data to IndexedDB separately
+            entries.forEach(async (entry, idx) => {
+                if (entry.fileData && entry.fileName) {
+                    await fileStorage.saveEntry(`entry-${idx}`, entry.fileData, entry.fileName);
+                }
+            });
+
+            // Remove fileData from entries to save space in localStorage
             const entriesWithoutFileData = entries.map(entry => ({
                 ...entry,
-                fileData: undefined, // Don't save base64 data
+                fileData: undefined, // Don't save base64 data to localStorage
             }));
 
             const stateToSave = {
@@ -79,11 +104,12 @@ export default function StepsSection() {
                 }
             }
         } else if (typeof window !== 'undefined' && step < 3) {
-            // Clear localStorage when going back to Step 1 or 2
+            // Clear localStorage and IndexedDB when going back to Step 1 or 2
             try {
                 localStorage.removeItem(STORAGE_KEY);
+                fileStorage.clearAll();
             } catch (e) {
-                console.error('Failed to clear localStorage:', e);
+                console.error('Failed to clear storage:', e);
             }
         }
     }, [step, aktivitasId, cookies, entries, results]);
@@ -149,30 +175,71 @@ export default function StepsSection() {
 
     const handleSupportingFileUpload = async (index: number, file: File) => {
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onload = async () => {
             const base64 = reader.result as string;
+            const fileDataBase64 = base64.split(',')[1];
+
+            // Save to IndexedDB
+            await fileStorage.saveEntry(`entry-${index}`, fileDataBase64, file.name);
+
+            // Update state
             const updatedEntries = [...entries];
             updatedEntries[index] = {
                 ...updatedEntries[index],
-                fileData: base64.split(',')[1],
-                fileName: file.name
+                fileData: fileDataBase64,
+                fileName: file.name,
+                fileSource: 'review'  // Mark as from review section upload (reliable)
             };
             setEntries(updatedEntries);
+
+            console.log('[DEBUG] File uploaded and saved to IndexedDB:', {
+                index,
+                fileName: file.name,
+                fileDataLength: fileDataBase64.length
+            });
         };
         reader.readAsDataURL(file);
     };
 
-    const handleUpdateEntry = (index: number, updatedEntry: LogbookEntry) => {
+    const handleUpdateEntry = async (index: number, updatedEntry: LogbookEntry) => {
+        console.log('[DEBUG] StepsSection - Updating entry:', {
+            index,
+            fileName: updatedEntry.fileName,
+            hasFileData: !!updatedEntry.fileData,
+            fileDataLength: updatedEntry.fileData?.length || 0,
+            fileSource: updatedEntry.fileSource
+        });
+
+        // Save file data to IndexedDB if present
+        if (updatedEntry.fileData && updatedEntry.fileName) {
+            await fileStorage.saveEntry(`entry-${index}`, updatedEntry.fileData, updatedEntry.fileName);
+        }
+
         const updatedEntries = [...entries];
         updatedEntries[index] = updatedEntry;
         setEntries(updatedEntries);
     };
 
-    const handleAddEntry = (newEntry: LogbookEntry) => {
+    const handleAddEntry = async (newEntry: LogbookEntry) => {
+        console.log('[DEBUG] StepsSection - Adding new entry:', {
+            fileName: newEntry.fileName,
+            hasFileData: !!newEntry.fileData,
+            fileDataLength: newEntry.fileData?.length || 0
+        });
+
+        // Save file data to IndexedDB if present
+        if (newEntry.fileData && newEntry.fileName) {
+            const newIndex = entries.length;
+            await fileStorage.saveEntry(`entry-${newIndex}`, newEntry.fileData, newEntry.fileName);
+        }
+
         setEntries([...entries, newEntry]);
     };
 
-    const handleDeleteEntry = (index: number) => {
+    const handleDeleteEntry = async (index: number) => {
+        // Delete from IndexedDB
+        await fileStorage.deleteEntry(`entry-${index}`);
+
         const updatedEntries = entries.filter((_, i) => i !== index);
         setEntries(updatedEntries);
     };
@@ -186,9 +253,10 @@ export default function StepsSection() {
 
 
     const handleStartOver = () => {
-        // Clear localStorage
+        // Clear localStorage and IndexedDB
         if (typeof window !== 'undefined') {
             localStorage.removeItem(STORAGE_KEY);
+            fileStorage.clearAll();
         }
 
         // Reset all state
