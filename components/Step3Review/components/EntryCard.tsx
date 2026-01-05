@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { LogbookEntry } from '@/types/logbook';
 import { getJenisLogLabel, getModeLabel, validateDosenInput } from '../utils';
 import EntryFormFields from './EntryFormFields';
@@ -55,45 +55,9 @@ export default function EntryCard({
     isEditedEntryValid,
     entryRef,
 }: EntryCardProps) {
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [fileError, setFileError] = useState<string | null>(null);
     const [showPreview, setShowPreview] = useState(false);
     const currentEntry = isEditing ? editedEntry! : entry;
-
-    const handleFileRemove = () => {
-        if (isEditing) {
-            // Reset file input
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-            // Clear file data from entry state
-            onFieldChange('fileData', undefined);
-            onFieldChange('fileName', undefined);
-        }
-    };
-
-    // Handler for file upload in edit mode - updates local editedEntry state only
-    // File will be saved to IndexedDB when Save is clicked via handleUpdateEntry
-    const handleFileUploadInEditMode = async (file: File) => {
-        try {
-            const { fileToBase64 } = await import('@/lib/logbook-service');
-            const base64 = await fileToBase64(file);
-
-            console.log('[DEBUG] EntryCard - handleFileUploadInEditMode:', {
-                index,
-                fileName: file.name,
-                base64Length: base64.length
-            });
-
-            // Update local editedEntry state via onFieldChange
-            // This will be persisted when Save is clicked
-            onFieldChange('fileData', base64);
-            onFieldChange('fileName', file.name);
-            onFieldChange('fileSource', 'add_edit');  // Mark as from add/edit (potentially unstable)
-        } catch (error) {
-            console.error('[ERROR] Failed to process file in edit mode:', error);
-        }
-    };
 
     const handleFileUploadInViewMode = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -201,18 +165,14 @@ export default function EntryCard({
                 </div>
             )}
 
-            {/* Fields - Use EntryFormFields for both edit and view mode */}
+            {/* Fields - Use EntryFormFields for edit mode */}
             {isEditing ? (
                 <EntryFormFields
                     entry={currentEntry}
                     lecturers={lecturers}
                     isEditing={true}
                     onFieldChange={onFieldChange}
-                    fileInputRef={fileInputRef}
                     isSubmitting={isSubmitting}
-                    onFileRemove={handleFileRemove}
-                    onFileUpload={handleFileUploadInEditMode}
-                    entryIndex={index}
                 />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

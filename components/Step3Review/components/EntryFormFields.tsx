@@ -15,11 +15,8 @@ interface EntryFormFieldsProps {
     lecturers: Lecturer[];
     isEditing: boolean;
     onFieldChange: (field: keyof LogbookEntry, value: any) => void;
-    fileInputRef?: React.RefObject<HTMLInputElement>;
     isSubmitting?: boolean;
     onFileRemove?: () => void;
-    onFileUpload?: (file: File) => Promise<void>;
-    entryIndex?: number;
 }
 
 export default function EntryFormFields({
@@ -27,15 +24,11 @@ export default function EntryFormFields({
     lecturers,
     isEditing,
     onFieldChange,
-    fileInputRef,
     isSubmitting = false,
     onFileRemove,
-    onFileUpload,
-    entryIndex,
 }: EntryFormFieldsProps) {
     const [fileError, setFileError] = useState<string | null>(null);
     const [showPreview, setShowPreview] = useState(false);
-    const [fileLoading, setFileLoading] = useState(false);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -245,108 +238,25 @@ export default function EntryFormFields({
                 </label>
 
                 <div className="space-y-2">
-                    {/* Caution Message */}
-                    <div className="mb-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded text-xs text-yellow-800 dark:text-yellow-200">
-                        <strong>⚠️ Caution:</strong> File upload when adding/editing entries may be unstable. For reliable results, please attach files in your <strong>ZIP upload</strong> or add them in the <strong>Review step without editing</strong>.
-                    </div>
-
+                    {/* Info Message - File upload not available in add/edit mode */}
                     {isEditing && (
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                            onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                    setFileError(null);
-                                    setFileLoading(true);
-
-                                    try {
-                                        const { validateFileSize } = await import('../utils/fileUploadHelper');
-                                        const validation = validateFileSize(file);
-
-                                        if (!validation.valid) {
-                                            setFileError(validation.error || 'File size exceeds limit');
-                                            e.target.value = '';
-                                            setFileLoading(false);
-                                            return;
-                                        }
-
-                                        // Use parent handler if provided (for both ADD and EDIT modes)
-                                        if (onFileUpload) {
-                                            console.log('[DEBUG] EntryFormFields - Using onFileUpload handler:', {
-                                                hasEntryIndex: entryIndex !== undefined,
-                                                entryIndex,
-                                                fileName: file.name
-                                            });
-                                            await onFileUpload(file);
-                                            setFileLoading(false);
-                                        } else {
-                                            // Fallback: use onFieldChange directly (for view mode without handler)
-                                            const reader = new FileReader();
-                                            reader.onload = () => {
-                                                const base64 = (reader.result as string).split(',')[1];
-                                                console.log('[DEBUG] EntryFormFields - Using fallback onFieldChange:', {
-                                                    fileName: file.name,
-                                                    base64Length: base64.length
-                                                });
-                                                onFieldChange('fileData', base64);
-                                                onFieldChange('fileName', file.name);
-                                                setFileLoading(false);
-                                            };
-                                            reader.onerror = () => {
-                                                setFileError('Failed to read file. Please try again.');
-                                                setFileLoading(false);
-                                                e.target.value = '';
-                                            };
-                                            reader.readAsDataURL(file);
-                                        }
-                                    } catch (error) {
-                                        setFileError('An error occurred while processing the file.');
-                                        setFileLoading(false);
-                                        e.target.value = '';
-                                    }
-                                }
-                            }}
-                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 file:mr-3 file:py-0.5 file:px-2 file:rounded file:text-xs file:font-semibold file:bg-white file:text-gray-700 file:border file:border-gray-300 hover:file:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800"
-                            disabled={isSubmitting}
-                        />
-                    )}
-
-                    {fileError && (
-                        <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                             <div className="flex items-start gap-2">
-                                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <div className="flex-1">
-                                    <p className="text-sm font-semibold text-red-800 dark:text-red-300">File Too Large</p>
-                                    <p className="text-xs text-red-700 dark:text-red-400 mt-1">{fileError}</p>
+                                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">File Upload Not Available Here</p>
+                                    <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                                        To attach supporting files, please use the <strong>attached file from your ZIP upload</strong> (primary method) or add files in the <strong>Review section</strong> (without entering edit mode).
+                                    </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setFileError(null)}
-                                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
                             </div>
                         </div>
                     )}
 
-                    {fileLoading && (
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded">
-                            <svg className="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span className="text-sm text-blue-800 dark:text-blue-200">Processing file...</span>
-                        </div>
-                    )}
-
-                    {entry.fileName && !fileLoading && (
+                    {/* Display existing file (from ZIP) - read only in edit mode */}
+                    {entry.fileName && (
                         <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded">
                             <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -390,6 +300,34 @@ export default function EntryFormFields({
                                     Remove
                                 </button>
                             )}
+                        </div>
+                    )}
+
+                    {/* No file attached message */}
+                    {!entry.fileName && !isEditing && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic">No file attached</p>
+                    )}
+
+                    {fileError && (
+                        <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+                            <div className="flex items-start gap-2">
+                                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold text-red-800 dark:text-red-300">Error</p>
+                                    <p className="text-xs text-red-700 dark:text-red-400 mt-1">{fileError}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setFileError(null)}
+                                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
