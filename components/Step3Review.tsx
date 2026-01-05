@@ -48,7 +48,8 @@ export default function Step3Review({
         allEntriesEmpty,
         isNewEntryValid,
         isEditedEntryValid,
-        errorIndices
+        errorIndices,
+        newEntryValidation
     } = useEntryValidation({ entries, lecturers, newEntry, editedEntry });
 
     const {
@@ -353,6 +354,7 @@ export default function Step3Review({
                             newEntry={newEntry}
                             lecturers={lecturers}
                             isNewEntryValid={isNewEntryValid}
+                            validation={newEntryValidation}
                             onFieldChange={updateNewEntryField}
                             onSave={handleSaveNewEntry}
                             onCancel={handleCancelAddEntry}

@@ -19,6 +19,8 @@ interface UseEntryValidationReturn {
     isNewEntryValid: boolean;
     isEditedEntryValid: boolean;
     errorIndices: number[];
+    newEntryValidation: ReturnType<typeof validateLogbookEntry> | null;
+    editedEntryValidation: ReturnType<typeof validateLogbookEntry> | null;
 }
 
 export const useEntryValidation = ({
@@ -52,6 +54,8 @@ export const useEntryValidation = ({
         .filter(idx => idx !== -1);
 
     // Validation for new entry
+    const newEntryValidation = newEntry ? validateLogbookEntry(newEntry, maxDosen) : null;
+
     const isNewEntryValid = (() => {
         if (!newEntry) return false;
 
@@ -64,11 +68,12 @@ export const useEntryValidation = ({
 
         if (!hasRequiredFields) return false;
 
-        const validation = validateLogbookEntry(newEntry, maxDosen);
-        return validation.isValid;
+        return newEntryValidation?.isValid ?? false;
     })();
 
     // Validation for edited entry
+    const editedEntryValidation = editedEntry ? validateLogbookEntry(editedEntry, maxDosen) : null;
+
     const isEditedEntryValid = (() => {
         if (!editedEntry) return false;
 
@@ -81,8 +86,7 @@ export const useEntryValidation = ({
 
         if (!hasRequiredFields) return false;
 
-        const validation = validateLogbookEntry(editedEntry, maxDosen);
-        return validation.isValid;
+        return editedEntryValidation?.isValid ?? false;
     })();
 
     return {
@@ -91,6 +95,8 @@ export const useEntryValidation = ({
         allEntriesEmpty,
         isNewEntryValid,
         isEditedEntryValid,
-        errorIndices
+        errorIndices,
+        newEntryValidation,
+        editedEntryValidation
     };
 };
