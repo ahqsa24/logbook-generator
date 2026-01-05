@@ -63,6 +63,28 @@ export default function StepsSection() {
             const step2Data = loadStep2Data();
             if (step2Data?.lecturers) {
                 setLecturers(step2Data.lecturers);
+            } else if (step1Data?.aktivitasId && step1Data?.cookies) {
+                // If lecturers not saved but we have credentials, fetch them
+                console.log('[StepsSection] Lecturers not found in storage, fetching...');
+                try {
+                    const response = await fetch('/api/auth/get-lecturers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            aktivitasId: step1Data.aktivitasId,
+                            cookies: step1Data.cookies
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.success && data.lecturers) {
+                        setLecturers(data.lecturers);
+                        // Save to Step 2 storage for next time
+                        saveStep2Data({ lecturers: data.lecturers });
+                        console.log('[StepsSection] Lecturers fetched and saved:', data.lecturers.length);
+                    }
+                } catch (error) {
+                    console.error('[StepsSection] Failed to fetch lecturers on restore:', error);
+                }
             }
 
             // Load Step 3 data (entries, results)
