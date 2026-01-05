@@ -1,6 +1,5 @@
 'use client';
 
-import { useRef } from 'react';
 import { LogbookEntry } from '@/types/logbook';
 import EntryFormFields from './EntryFormFields';
 
@@ -28,19 +27,7 @@ export default function AddEntryForm({
     onCancel,
     formRef,
 }: AddEntryFormProps) {
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
-
     if (!newEntry) return null;
-
-    const handleFileRemove = () => {
-        // Reset file input
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-        // Clear file data from entry state
-        onFieldChange('fileData', undefined);
-        onFieldChange('fileName', undefined);
-    };
 
     return (
         <div
@@ -83,8 +70,6 @@ export default function AddEntryForm({
                 lecturers={lecturers}
                 isEditing={true}
                 onFieldChange={onFieldChange}
-                fileInputRef={fileInputRef}
-                onFileRemove={handleFileRemove}
             />
         </div>
     );

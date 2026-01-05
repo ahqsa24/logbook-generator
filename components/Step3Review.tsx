@@ -133,6 +133,13 @@ export default function Step3Review({
             const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
             sanitizedEntry.Dosen = validateDosenInput(sanitizedEntry.Dosen, maxDosen);
 
+            // DEBUG: Track file data
+            console.log('[DEBUG] Saving new entry with file data:', {
+                fileName: sanitizedEntry.fileName,
+                hasFileData: !!sanitizedEntry.fileData,
+                fileDataLength: sanitizedEntry.fileData?.length || 0
+            });
+
             onAddEntry(sanitizedEntry);
             setIsAddingEntry(false);
             setNewEntry(null);
@@ -163,6 +170,11 @@ export default function Step3Review({
 
     const updateNewEntryField = (field: keyof LogbookEntry, value: any) => {
         if (newEntry) {
+            console.log('[DEBUG] Step3Review - updateNewEntryField:', {
+                field,
+                valueType: typeof value,
+                valueLength: typeof value === 'string' ? value.length : 'N/A'
+            });
             setNewEntry({ ...newEntry, [field]: value });
         }
     };
@@ -229,6 +241,14 @@ export default function Step3Review({
             const maxDosen = lecturers.length > 0 ? lecturers.length : 1;
             sanitizedEntry.Dosen = validateDosenInput(sanitizedEntry.Dosen, maxDosen);
 
+            // DEBUG: Track file data
+            console.log('[DEBUG] Saving edited entry with file data:', {
+                index,
+                fileName: sanitizedEntry.fileName,
+                hasFileData: !!sanitizedEntry.fileData,
+                fileDataLength: sanitizedEntry.fileData?.length || 0
+            });
+
             onUpdateEntry(index, sanitizedEntry);
             setEditingIndex(null);
             setEditedEntry(null);
@@ -242,6 +262,11 @@ export default function Step3Review({
 
     const updateField = (field: keyof LogbookEntry, value: any) => {
         if (editedEntry) {
+            console.log('[DEBUG] Step3Review - updateField (edit mode):', {
+                field,
+                valueType: typeof value,
+                valueLength: typeof value === 'string' ? value.length : 'N/A'
+            });
             setEditedEntry({ ...editedEntry, [field]: value });
         }
     };

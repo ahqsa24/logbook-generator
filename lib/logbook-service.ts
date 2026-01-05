@@ -153,7 +153,7 @@ export async function parseExcelFile(file: File): Promise<LogbookEntry[]> {
                 `Excel file is missing required columns: ${missingRequired.join(', ')}.\n\n` +
                 `Required columns: ${requiredColumns.join(', ')}\n` +
                 `Optional columns: ${optionalColumns.join(', ')}\n\n` +
-                `Please ensure your Excel file has all required column headers in the first row.`
+                `Please download the template file from Step 2 and use it as a reference.`
             );
         }
 
@@ -203,9 +203,11 @@ export async function parseExcelFile(file: File): Promise<LogbookEntry[]> {
         // Check for common Excel parsing errors and provide user-friendly messages
         if (errorMessage.includes('central directory') || errorMessage.includes('zip')) {
             throw new Error(
-                'File is corrupted or not a valid Excel file (.xlsx).\\n\\n' +
-                'Please ensure you are uploading a valid Excel file saved in .xlsx format.\\n' +
-                'If you saved it from Excel, try: File → Save As → Excel Workbook (.xlsx)'
+                'File is corrupted or not a valid Excel file (.xlsx).\n\n' +
+                'Please ensure you are uploading:\n' +
+                '• A valid Excel file saved in .xlsx format\n' +
+                '• Or a ZIP archive containing the Excel template\n\n' +
+                'Download the template from Step 2 if you need the correct format.'
             );
         }
 
@@ -216,12 +218,12 @@ export async function parseExcelFile(file: File): Promise<LogbookEntry[]> {
 
         // Generic Excel parsing error
         throw new Error(
-            'Failed to read Excel file.\\n\\n' +
-            'Possible causes:\\n' +
-            '• File is corrupted or in wrong format\\n' +
-            '• File is not a valid .xlsx Excel file\\n' +
-            '• File was saved in compatibility mode (.xls)\\n\\n' +
-            'Please save your file as .xlsx format and try again.\\n\\n' +
+            'Failed to read Excel file.\n\n' +
+            'Possible causes:\n' +
+            '• File is corrupted or in wrong format\n' +
+            '• File is not a valid .xlsx Excel file\n' +
+            '• File structure doesn\'t match the template\n\n' +
+            'Please download the template from Step 2 and ensure your file matches the format.\n\n' +
             `Technical error: ${errorMessage}`
         );
     }
@@ -367,6 +369,7 @@ export async function parseZipFile(zipFile: File): Promise<{
                     const base64 = await fileToBase64(matchedFile);
                     entry.fileData = base64;
                     entry.fileName = matchedFile.name;
+                    entry.fileSource = 'zip';
                     matchedCount++;
                 } else {
                     missingCount++;
@@ -390,15 +393,15 @@ export async function parseZipFile(zipFile: File): Promise<{
         // ZIP parsing errors
         if (errorMessage.includes('zip') || errorMessage.includes('corrupt')) {
             throw new Error(
-                'Failed to read ZIP file.\\n\\n' +
-                'The file may be corrupted or not a valid ZIP archive.\\n' +
+                'Failed to read ZIP file.\n\n' +
+                'The file may be corrupted or not a valid ZIP archive.\n' +
                 'Please ensure you are uploading a valid .zip file.'
             );
         }
 
         // Generic error
         throw new Error(
-            'Failed to process ZIP file.\\n\\n' +
+            'Failed to process ZIP file.\n\n' +
             `Error: ${errorMessage}`
         );
     }
