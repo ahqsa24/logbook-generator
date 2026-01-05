@@ -1,10 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LogbookEntry, SubmissionResult, CookieData, Lecturer } from '@/types/logbook';
 import { parseExcelFile, parseZipFile, parseCookieString } from '@/lib/logbook-service';
 import { validateLogbookEntry } from '@/lib/validation';
 import { fileStorage } from '@/lib/fileStorage';
+import {
+    saveStep1Data,
+    loadStep1Data,
+    saveStep2Data,
+    loadStep2Data,
+    saveStep3Data,
+    loadStep3Data,
+    saveMetaData,
+    loadMetaData,
+    clearFromStep,
+    clearAllStepData,
+    migrateFromLegacy,
+} from '@/lib/stepStorage';
 import StepIndicator from '@/components/StepIndicator';
 import Step1Authentication from '@/components/Step1Authentication';
 import Step2FileUpload from '@/components/Step2FileUpload';
@@ -13,63 +26,111 @@ import Step4Results from '@/components/Step4Results';
 import CommentSection from '@/components/CommentSection';
 import { useSubmission, useDownload } from './StepsSection/hooks';
 
-const STORAGE_KEY = 'ipb-logbook-generator-state';
-
 export default function StepsSection() {
-    // Initialize state with localStorage
+    // Initialize state
     const [step, setStep] = useState<number>(1);
     const [aktivitasId, setAktivitasId] = useState<string>('');
     const [cookies, setCookies] = useState<CookieData | null>(null);
     const [entries, setEntries] = useState<LogbookEntry[]>([]);
     const [hasSubmitted, setHasSubmitted] = useState(false);
     const [lecturers, setLecturers] = useState<Lecturer[]>([]);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // Use custom hooks
     const { isSubmitting, currentSubmission, results, submitAll, setResults } = useSubmission();
     const { downloadResults, downloadXLSX } = useDownload(results, lecturers);
 
-    // Load state from localStorage on mount (only if from Step 3+)
+    // Load state from localStorage on mount
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    // Only restore if saved state was from Step 3 or later
-                    if (parsed.step && parsed.step >= 3) {
-                        if (parsed.step) setStep(parsed.step);
-                        if (parsed.aktivitasId) setAktivitasId(parsed.aktivitasId);
-                        if (parsed.cookies) setCookies(parsed.cookies);
-                        if (parsed.entries) {
-                            // Load file data from IndexedDB for each entry
-                            Promise.all(
-                                parsed.entries.map(async (entry: LogbookEntry, idx: number) => {
-                                    const storedFile = await fileStorage.getEntry(`entry-${idx}`);
-                                    if (storedFile?.fileData) {
-                                        return {
-                                            ...entry,
-                                            fileData: storedFile.fileData,
-                                            fileName: storedFile.fileName
-                                        };
-                                    }
-                                    return entry;
-                                })
-                            ).then(entriesWithFiles => {
-                                setEntries(entriesWithFiles);
-                            });
-                        }
-                        if (parsed.results) setResults(parsed.results);
-                    }
-                } catch (e) {
-                    console.error('Failed to load saved state:', e);
+        if (typeof window === 'undefined') return;
+
+        const loadSavedState = async () => {
+            // First, try to migrate from legacy storage
+            migrateFromLegacy();
+
+            // Load meta data to get current step
+            const meta = loadMetaData();
+
+            // Load Step 1 data (aktivitasId, cookies)
+            const step1Data = loadStep1Data();
+            if (step1Data) {
+                if (step1Data.aktivitasId) setAktivitasId(step1Data.aktivitasId);
+                if (step1Data.cookies) setCookies(step1Data.cookies);
+            }
+
+            // Load Step 2 data (lecturers)
+            const step2Data = loadStep2Data();
+            if (step2Data?.lecturers) {
+                setLecturers(step2Data.lecturers);
+            }
+
+            // Load Step 3 data (entries, results)
+            const step3Data = loadStep3Data();
+            if (step3Data) {
+                if (step3Data.entries) {
+                    // Load file data from IndexedDB for each entry
+                    const entriesWithFiles = await Promise.all(
+                        step3Data.entries.map(async (entry: LogbookEntry, idx: number) => {
+                            const storedFile = await fileStorage.getEntry(`entry-${idx}`);
+                            if (storedFile?.fileData) {
+                                return {
+                                    ...entry,
+                                    fileData: storedFile.fileData,
+                                    fileName: storedFile.fileName
+                                };
+                            }
+                            return entry;
+                        })
+                    );
+                    setEntries(entriesWithFiles);
+                }
+                if (step3Data.results) setResults(step3Data.results);
+                if (step3Data.hasSubmitted) setHasSubmitted(step3Data.hasSubmitted);
+            }
+
+            // Restore step if valid data exists
+            if (meta?.currentStep) {
+                // Validate that we have the required data for the saved step
+                if (meta.currentStep >= 2 && !step1Data?.aktivitasId) {
+                    // Missing Step 1 data, stay at Step 1
+                    setStep(1);
+                } else if (meta.currentStep >= 3 && (!step1Data?.aktivitasId || !step3Data?.entries)) {
+                    // Missing required data for Step 3
+                    setStep(step1Data?.aktivitasId ? 2 : 1);
+                } else {
+                    setStep(meta.currentStep);
                 }
             }
-        }
+
+            setIsLoaded(true);
+        };
+
+        loadSavedState();
     }, [setResults]);
 
-    // Save state to localStorage and IndexedDB only after Step 2 (file upload completed)
+    // Save Step 1 data when aktivitasId or cookies change
     useEffect(() => {
-        if (typeof window !== 'undefined' && step >= 3) {
+        if (!isLoaded || typeof window === 'undefined') return;
+
+        if (aktivitasId || cookies) {
+            saveStep1Data({ aktivitasId, cookies });
+        }
+    }, [aktivitasId, cookies, isLoaded]);
+
+    // Save Step 2 data when lecturers change
+    useEffect(() => {
+        if (!isLoaded || typeof window === 'undefined') return;
+
+        if (lecturers.length > 0) {
+            saveStep2Data({ lecturers });
+        }
+    }, [lecturers, isLoaded]);
+
+    // Save Step 3 data when entries or results change
+    useEffect(() => {
+        if (!isLoaded || typeof window === 'undefined') return;
+
+        if (step >= 3 && entries.length > 0) {
             // Save file data to IndexedDB separately
             entries.forEach(async (entry, idx) => {
                 if (entry.fileData && entry.fileName) {
@@ -77,48 +138,54 @@ export default function StepsSection() {
                 }
             });
 
-            // Remove fileData from entries to save space in localStorage
-            const entriesWithoutFileData = entries.map(entry => ({
-                ...entry,
-                fileData: undefined, // Don't save base64 data to localStorage
-            }));
-
-            const stateToSave = {
-                step,
-                aktivitasId,
-                cookies,
-                entries: entriesWithoutFileData,
-                results,
-                timestamp: new Date().toISOString(),
-            };
-
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-            } catch (error) {
-                console.warn('Failed to save state to localStorage:', error);
-                // If still too large, clear old state
-                try {
-                    localStorage.removeItem(STORAGE_KEY);
-                } catch (e) {
-                    console.error('Failed to clear localStorage:', e);
-                }
-            }
-        } else if (typeof window !== 'undefined' && step < 3) {
-            // Clear localStorage and IndexedDB when going back to Step 1 or 2
-            try {
-                localStorage.removeItem(STORAGE_KEY);
-                fileStorage.clearAll();
-            } catch (e) {
-                console.error('Failed to clear storage:', e);
-            }
+            // Save entries metadata to localStorage (without fileData)
+            saveStep3Data({
+                entries: entries,
+                results: results,
+                hasSubmitted: hasSubmitted,
+            });
         }
-    }, [step, aktivitasId, cookies, entries, results]);
+    }, [entries, results, hasSubmitted, step, isLoaded]);
+
+    // Save meta data (current step) when step changes
+    useEffect(() => {
+        if (!isLoaded || typeof window === 'undefined') return;
+
+        saveMetaData(step);
+    }, [step, isLoaded]);
+
+    // Handle going back with storage cleanup
+    const handleGoBack = useCallback((fromStep: number) => {
+        const targetStep = fromStep - 1;
+
+        // Clear storage for steps after the target
+        if (fromStep === 3) {
+            // Going from Step 3 to Step 2: Clear Step 3 data
+            clearFromStep(3);
+            fileStorage.clearAll(); // Clear file data from IndexedDB
+            setEntries([]);
+            setResults([]);
+            setHasSubmitted(false);
+        } else if (fromStep === 2) {
+            // Going from Step 2 to Step 1: Clear Step 2 and 3 data
+            clearFromStep(2);
+            fileStorage.clearAll();
+            setLecturers([]);
+            setEntries([]);
+            setResults([]);
+            setHasSubmitted(false);
+        }
+
+        setStep(targetStep);
+    }, [setResults]);
 
     const handleStep1Submit = (id: string, cookieString: string) => {
         setAktivitasId(id);
         const parsedCookies = parseCookieString(cookieString);
         setCookies(parsedCookies);
 
+        // Save Step 1 data immediately
+        saveStep1Data({ aktivitasId: id, cookies: parsedCookies });
 
         // Move to Step 2 immediately - don't wait for lecturers
         setStep(2);
@@ -133,7 +200,8 @@ export default function StepsSection() {
             .then(data => {
                 if (data.success && data.lecturers) {
                     setLecturers(data.lecturers);
-                    //console.log(`Loaded ${data.lecturers.length} lecturers`);
+                    // Save lecturers to Step 2 storage
+                    saveStep2Data({ lecturers: data.lecturers });
                 }
             })
             .catch(error => {
@@ -250,20 +318,17 @@ export default function StepsSection() {
         setStep(4);
     };
 
-
-
     const handleStartOver = () => {
-        // Clear localStorage and IndexedDB
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem(STORAGE_KEY);
-            fileStorage.clearAll();
-        }
+        // Clear all localStorage and IndexedDB
+        clearAllStepData();
+        fileStorage.clearAll();
 
         // Reset all state
         setStep(1);
         setAktivitasId('');
         setCookies(null);
         setEntries([]);
+        setLecturers([]);
         setResults([]);
         setHasSubmitted(false);
     };
@@ -284,13 +349,15 @@ export default function StepsSection() {
                     {step === 1 && (
                         <Step1Authentication
                             onSubmit={handleStep1Submit}
+                            savedAktivitasId={aktivitasId}
+                            savedCookies={cookies}
                         />
                     )}
 
                     {step === 2 && (
                         <Step2FileUpload
                             onFileUpload={handleFileUpload}
-                            onBack={() => setStep(1)}
+                            onBack={() => handleGoBack(2)}
                             onManualEntry={handleManualEntry}
                         />
                     )}
@@ -307,7 +374,7 @@ export default function StepsSection() {
                             onAddEntry={handleAddEntry}
                             onDeleteEntry={handleDeleteEntry}
                             onSubmit={handleSubmitAll}
-                            onBack={() => setStep(2)}
+                            onBack={() => handleGoBack(3)}
                         />
                     )}
 

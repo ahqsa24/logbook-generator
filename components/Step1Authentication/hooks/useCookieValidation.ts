@@ -2,13 +2,25 @@
  * Custom hook for URL and cookie validation
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { validateAndExtractAktivitasId } from '../utils';
 
-export const useCookieValidation = () => {
+interface UseCookieValidationOptions {
+    initialAktivitasId?: string;
+}
+
+export const useCookieValidation = (options?: UseCookieValidationOptions) => {
     const [aktivitasId, setAktivitasId] = useState('');
     const [urlError, setUrlError] = useState('');
     const [rawInput, setRawInput] = useState('');
+
+    // Initialize with saved aktivitasId if provided
+    useEffect(() => {
+        if (options?.initialAktivitasId && !aktivitasId) {
+            setAktivitasId(options.initialAktivitasId);
+            setRawInput(options.initialAktivitasId);
+        }
+    }, [options?.initialAktivitasId]);
 
     const handleAktivitasIdChange = (input: string) => {
         setRawInput(input);
@@ -27,6 +39,7 @@ export const useCookieValidation = () => {
         aktivitasId,
         urlError,
         rawInput,
-        handleAktivitasIdChange
+        handleAktivitasIdChange,
+        setRawInput,
     };
 };

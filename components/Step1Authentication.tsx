@@ -1,18 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth, useCookieValidation } from './Step1Authentication/hooks';
 import { PrivacyNotice, UsernamePasswordForm, ManualCookieInput } from './Step1Authentication/components';
 import type { Step1AuthenticationProps } from './Step1Authentication/types';
 
-export default function Step1Authentication({ onSubmit }: Step1AuthenticationProps) {
-    // Use custom hooks
+export default function Step1Authentication({ onSubmit, savedAktivitasId, savedCookies }: Step1AuthenticationProps) {
+    const [hasSavedSession, setHasSavedSession] = useState(false);
+
+    // Use custom hooks with saved data
     const {
         aktivitasId,
         urlError,
         rawInput,
         handleAktivitasIdChange
-    } = useCookieValidation();
+    } = useCookieValidation({ initialAktivitasId: savedAktivitasId });
 
     const {
         authMethod,
@@ -31,6 +33,24 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
         handleManualSubmit
     } = useAuth(onSubmit);
 
+    // Check if there's saved session data
+    useEffect(() => {
+        if (savedAktivitasId && savedCookies) {
+            setHasSavedSession(true);
+        }
+    }, [savedAktivitasId, savedCookies]);
+
+    // Handle resume with saved session
+    const handleResumeSession = () => {
+        if (savedAktivitasId && savedCookies) {
+            // Convert cookies object to string format expected by onSubmit
+            const cookieString = Object.entries(savedCookies)
+                .map(([key, value]) => `${key}=${value}`)
+                .join('; ');
+            onSubmit(savedAktivitasId, cookieString);
+        }
+    };
+
     return (
         <div className="card dark:bg-gray-800 dark:border-gray-700">
             <h2 className="text-2xl font-semibold text-purple-900 dark:text-purple-300 mb-6">
@@ -38,6 +58,36 @@ export default function Step1Authentication({ onSubmit }: Step1AuthenticationPro
             </h2>
 
             <PrivacyNotice />
+
+            {/* Resume Session Banner - Show if there's saved session */}
+            {hasSavedSession && (
+                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                            <svg className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                                <p className="font-semibold text-green-800 dark:text-green-300">
+                                    Previous Session Found
+                                </p>
+                                <p className="text-sm text-green-700 dark:text-green-400 mt-1">
+                                    Aktivitas ID: <code className="bg-green-100 dark:bg-green-800 px-1 rounded">{savedAktivitasId}</code>
+                                </p>
+                                <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                                    You can continue with your previous session or start fresh below.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleResumeSession}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors shadow-sm flex-shrink-0"
+                        >
+                            Resume Session →
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Method Selector */}
             <div className="mb-6 flex gap-4">
