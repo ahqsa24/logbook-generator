@@ -17,6 +17,7 @@ import {
     clearFromStep,
     clearAllStepData,
     migrateFromLegacy,
+    getHighestStep,
 } from '@/lib/stepStorage';
 import StepIndicator from '@/components/StepIndicator';
 import Step1Authentication from '@/components/Step1Authentication';
@@ -154,32 +155,37 @@ export default function StepsSection() {
         saveMetaData(step);
     }, [step, isLoaded]);
 
-    // Handle going back with storage cleanup
+    // Handle going back - DON'T clear data, just change step
+    // Data persists until "Start Over" or new Step 1 input
     const handleGoBack = useCallback((fromStep: number) => {
         const targetStep = fromStep - 1;
 
-        // Clear storage for steps after the target
-        if (fromStep === 3) {
-            // Going from Step 3 to Step 2: Clear Step 3 data
-            clearFromStep(3);
-            fileStorage.clearAll(); // Clear file data from IndexedDB
-            setEntries([]);
-            setResults([]);
-            setHasSubmitted(false);
-        } else if (fromStep === 2) {
-            // Going from Step 2 to Step 1: Clear Step 2 and 3 data
-            clearFromStep(2);
-            fileStorage.clearAll();
-            setLecturers([]);
-            setEntries([]);
-            setResults([]);
-            setHasSubmitted(false);
-        }
-
+        // Simply go back to previous step
+        // Data is preserved in localStorage and will be available for "Resume Session"
         setStep(targetStep);
-    }, [setResults]);
+
+        console.log(`[StepsSection] Going back from Step ${fromStep} to Step ${targetStep} (data preserved)`);
+    }, []);
+
 
     const handleStep1Submit = (id: string, cookieString: string) => {
+        // Check if this is a new session (different aktivitasId)
+        const existingStep1 = loadStep1Data();
+        const isNewSession = existingStep1?.aktivitasId && existingStep1.aktivitasId !== id;
+
+        if (isNewSession) {
+            // Clear all old session data when starting with new aktivitasId
+            console.log('[StepsSection] New aktivitasId detected - clearing old session');
+            clearAllStepData();
+            fileStorage.clearAll();
+
+            // Reset state
+            setEntries([]);
+            setResults([]);
+            setHasSubmitted(false);
+            setLecturers([]);
+        }
+
         setAktivitasId(id);
         const parsedCookies = parseCookieString(cookieString);
         setCookies(parsedCookies);
@@ -349,6 +355,11 @@ export default function StepsSection() {
                     {step === 1 && (
                         <Step1Authentication
                             onSubmit={handleStep1Submit}
+                            onResumeSession={() => {
+                                const highestStep = getHighestStep();
+                                console.log(`[StepsSection] Resuming session to Step ${highestStep}`);
+                                setStep(highestStep);
+                            }}
                             savedAktivitasId={aktivitasId}
                             savedCookies={cookies}
                         />
@@ -423,3 +434,4 @@ export default function StepsSection() {
         </section>
     );
 }
+

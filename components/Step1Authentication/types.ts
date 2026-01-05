@@ -6,6 +6,7 @@ import { CookieData } from '@/types/logbook';
 
 export interface Step1AuthenticationProps {
     onSubmit: (aktivitasId: string, cookieString: string) => void;
+    onResumeSession?: () => void;  // New: callback to resume to highest step
     savedAktivitasId?: string;
     savedCookies?: CookieData | null;
 }
