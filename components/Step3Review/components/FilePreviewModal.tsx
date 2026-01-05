@@ -40,6 +40,20 @@ interface FilePreviewModalProps {
  */
 export const FilePreviewModal = ({ isOpen, onClose, fileName, fileData }: FilePreviewModalProps) => {
     const [pdfError, setPdfError] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Detect mobile device
+    useEffect(() => {
+        const checkMobile = () => {
+            const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const smallScreen = window.innerWidth < 768;
+            setIsMobile(mobile || smallScreen);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Close on ESC key
     useEffect(() => {
@@ -82,17 +96,17 @@ export const FilePreviewModal = ({ isOpen, onClose, fileName, fileData }: FilePr
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4"
             onClick={onClose}
         >
             <div
-                className="relative w-full h-full max-w-6xl max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-2xl flex flex-col"
+                className="relative w-full h-full max-w-6xl max-h-[95vh] sm:max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-2xl flex flex-col overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex-1 min-w-0 pr-4">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <div className="flex-1 min-w-0 pr-2 sm:pr-4">
+                        <h3 className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-gray-100 break-words line-clamp-2">
                             {fileName}
                         </h3>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -104,14 +118,14 @@ export const FilePreviewModal = ({ isOpen, onClose, fileName, fileData }: FilePr
                         className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         aria-label="Close"
                     >
-                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-auto p-4 bg-gray-50 dark:bg-gray-900">
+                <div className="flex-1 overflow-auto p-2 sm:p-4 bg-gray-50 dark:bg-gray-900">
                     {canPreview ? (
                         <>
                             {/* Image Preview */}
@@ -125,8 +139,8 @@ export const FilePreviewModal = ({ isOpen, onClose, fileName, fileData }: FilePr
                                 </div>
                             )}
 
-                            {/* PDF Preview */}
-                            {isPDF && !pdfError && (
+                            {/* PDF Preview - Auto-fallback on mobile */}
+                            {isPDF && !pdfError && !isMobile && (
                                 <div className="relative w-full h-full">
                                     <iframe
                                         src={fileUrl}
@@ -140,6 +154,31 @@ export const FilePreviewModal = ({ isOpen, onClose, fileName, fileData }: FilePr
                                             <strong>💡 Tip:</strong> If the PDF doesn&apos;t load, try downloading the file. Some PDFs may not display correctly in the browser due to security settings or file size.
                                         </p>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* PDF Mobile Fallback */}
+                            {isPDF && (pdfError || isMobile) && (
+                                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                                    <svg className="w-16 h-16 text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                    <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                        {isMobile ? 'PDF Preview on Mobile' : 'PDF Preview Unavailable'}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-md">
+                                        {isMobile
+                                            ? 'PDF preview works best on desktop browsers. Please download the file to view it on your mobile device.'
+                                            : 'This PDF cannot be displayed in the browser. Please download the file to view it.'
+                                        }
+                                    </p>
+                                    <a
+                                        href={fileUrl}
+                                        download={fileName}
+                                        className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+                                    >
+                                        Download PDF
+                                    </a>
                                 </div>
                             )}
 
