@@ -27,7 +27,19 @@ export const getFileType = (fileName: string): string => {
  */
 export const isPreviewable = (fileName: string): boolean => {
     const fileType = getFileType(fileName);
-    return fileType.startsWith('image/') || fileType === 'application/pdf';
+    const ext = getFileExtension(fileName);
+
+    // Images and PDFs can be previewed natively
+    if (fileType.startsWith('image/') || fileType === 'application/pdf') {
+        return true;
+    }
+
+    // DOCX files can be previewed with docx-preview library
+    if (ext === 'docx') {
+        return true;
+    }
+
+    return false;
 };
 
 /**
