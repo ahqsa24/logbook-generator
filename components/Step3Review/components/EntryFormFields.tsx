@@ -257,14 +257,14 @@ export default function EntryFormFields({
 
                     {/* Display existing file (from ZIP) - read only in edit mode */}
                     {entry.fileName && (
-                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded">
-                            <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded overflow-hidden">
+                            <svg className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span className="text-sm text-gray-900 dark:text-gray-200 flex-1">
+                            <span className="text-sm text-gray-900 dark:text-gray-200 flex-1 min-w-0 break-all">
                                 {entry.fileName}
                                 {entry.fileData && (
-                                    <span className="ml-2 text-xs text-green-600 dark:text-green-400">✓ Ready</span>
+                                    <span className="ml-2 text-xs text-green-600 dark:text-green-400 whitespace-nowrap">✓ Ready</span>
                                 )}
                             </span>
                             <button
