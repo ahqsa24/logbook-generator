@@ -170,6 +170,11 @@ export default function Step3Review({
 
     const updateNewEntryField = (field: keyof LogbookEntry, value: any) => {
         if (newEntry) {
+            console.log('[DEBUG] Step3Review - updateNewEntryField:', {
+                field,
+                valueType: typeof value,
+                valueLength: typeof value === 'string' ? value.length : 'N/A'
+            });
             setNewEntry({ ...newEntry, [field]: value });
         }
     };
@@ -257,6 +262,11 @@ export default function Step3Review({
 
     const updateField = (field: keyof LogbookEntry, value: any) => {
         if (editedEntry) {
+            console.log('[DEBUG] Step3Review - updateField (edit mode):', {
+                field,
+                valueType: typeof value,
+                valueLength: typeof value === 'string' ? value.length : 'N/A'
+            });
             setEditedEntry({ ...editedEntry, [field]: value });
         }
     };

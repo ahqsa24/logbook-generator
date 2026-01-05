@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { LogbookEntry, SubmissionResult, CookieData } from '@/types/logbook';
+import { fileStorage } from '@/lib/fileStorage';
 import { useCookieRefresh } from './useCookieRefresh';
 
 export const useSubmission = () => {
@@ -28,7 +29,19 @@ export const useSubmission = () => {
 
         for (let i = 0; i < entries.length; i++) {
             setCurrentSubmission(i + 1);
-            const entry = entries[i];
+            let entry = entries[i];
+
+            // Load file data from IndexedDB if not in memory
+            if (!entry.fileData && entry.fileName) {
+                const storedFile = await fileStorage.getEntry(`entry-${i}`);
+                if (storedFile?.fileData) {
+                    entry = {
+                        ...entry,
+                        fileData: storedFile.fileData,
+                        fileName: storedFile.fileName
+                    };
+                }
+            }
 
             // Refresh cookies every 25 entries (except for the first entry)
             if (i > 0 && i % 25 === 0 && i < entries.length) {

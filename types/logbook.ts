@@ -10,6 +10,7 @@ export interface LogbookEntry {
     FilePath?: string;
     fileData?: string;      // base64 encoded file
     fileName?: string;      // original file name
+    fileSource?: 'zip' | 'review' | 'add_edit';  // tracks where file was uploaded from
     validation?: {
         isValid: boolean;
         errors: string[];

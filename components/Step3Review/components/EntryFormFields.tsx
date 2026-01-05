@@ -18,6 +18,8 @@ interface EntryFormFieldsProps {
     fileInputRef?: React.RefObject<HTMLInputElement>;
     isSubmitting?: boolean;
     onFileRemove?: () => void;
+    onFileUpload?: (file: File) => Promise<void>;
+    entryIndex?: number;
 }
 
 export default function EntryFormFields({
@@ -28,6 +30,8 @@ export default function EntryFormFields({
     fileInputRef,
     isSubmitting = false,
     onFileRemove,
+    onFileUpload,
+    entryIndex,
 }: EntryFormFieldsProps) {
     const [fileError, setFileError] = useState<string | null>(null);
     const [showPreview, setShowPreview] = useState(false);
@@ -268,23 +272,35 @@ export default function EntryFormFields({
                                             return;
                                         }
 
-                                        const reader = new FileReader();
-                                        reader.onload = () => {
-                                            const base64 = (reader.result as string).split(',')[1];
-                                            console.log('[DEBUG] File read complete:', {
-                                                fileName: file.name,
-                                                base64Length: base64.length
+                                        // Use parent handler if provided (for both ADD and EDIT modes)
+                                        if (onFileUpload) {
+                                            console.log('[DEBUG] EntryFormFields - Using onFileUpload handler:', {
+                                                hasEntryIndex: entryIndex !== undefined,
+                                                entryIndex,
+                                                fileName: file.name
                                             });
-                                            onFieldChange('fileData', base64);
-                                            onFieldChange('fileName', file.name);
+                                            await onFileUpload(file);
                                             setFileLoading(false);
-                                        };
-                                        reader.onerror = () => {
-                                            setFileError('Failed to read file. Please try again.');
-                                            setFileLoading(false);
-                                            e.target.value = '';
-                                        };
-                                        reader.readAsDataURL(file);
+                                        } else {
+                                            // Fallback: use onFieldChange directly (for view mode without handler)
+                                            const reader = new FileReader();
+                                            reader.onload = () => {
+                                                const base64 = (reader.result as string).split(',')[1];
+                                                console.log('[DEBUG] EntryFormFields - Using fallback onFieldChange:', {
+                                                    fileName: file.name,
+                                                    base64Length: base64.length
+                                                });
+                                                onFieldChange('fileData', base64);
+                                                onFieldChange('fileName', file.name);
+                                                setFileLoading(false);
+                                            };
+                                            reader.onerror = () => {
+                                                setFileError('Failed to read file. Please try again.');
+                                                setFileLoading(false);
+                                                e.target.value = '';
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
                                     } catch (error) {
                                         setFileError('An error occurred while processing the file.');
                                         setFileLoading(false);
@@ -292,7 +308,7 @@ export default function EntryFormFields({
                                     }
                                 }
                             }}
-                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 file:mr-3 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-white file:text-gray-700 file:border file:border-gray-300 hover:file:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                            className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 file:mr-3 file:py-0.5 file:px-2 file:rounded file:text-xs file:font-semibold file:bg-white file:text-gray-700 file:border file:border-gray-300 hover:file:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800"
                             disabled={isSubmitting}
                         />
                     )}

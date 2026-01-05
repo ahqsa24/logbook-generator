@@ -72,6 +72,29 @@ export default function EntryCard({
         }
     };
 
+    // Handler for file upload in edit mode - updates local editedEntry state only
+    // File will be saved to IndexedDB when Save is clicked via handleUpdateEntry
+    const handleFileUploadInEditMode = async (file: File) => {
+        try {
+            const { fileToBase64 } = await import('@/lib/logbook-service');
+            const base64 = await fileToBase64(file);
+
+            console.log('[DEBUG] EntryCard - handleFileUploadInEditMode:', {
+                index,
+                fileName: file.name,
+                base64Length: base64.length
+            });
+
+            // Update local editedEntry state via onFieldChange
+            // This will be persisted when Save is clicked
+            onFieldChange('fileData', base64);
+            onFieldChange('fileName', file.name);
+            onFieldChange('fileSource', 'add_edit');  // Mark as from add/edit (potentially unstable)
+        } catch (error) {
+            console.error('[ERROR] Failed to process file in edit mode:', error);
+        }
+    };
+
     const handleFileUploadInViewMode = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -188,6 +211,8 @@ export default function EntryCard({
                     fileInputRef={fileInputRef}
                     isSubmitting={isSubmitting}
                     onFileRemove={handleFileRemove}
+                    onFileUpload={handleFileUploadInEditMode}
+                    entryIndex={index}
                 />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -264,7 +289,7 @@ export default function EntryCard({
                             <input
                                 type="file"
                                 onChange={handleFileUploadInViewMode}
-                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 file:mr-3 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-white file:text-gray-700 file:border file:border-gray-300 hover:file:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                                className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 file:mr-3 file:py-0.5 file:px-2 file:rounded file:text-xs file:font-semibold file:bg-white file:text-gray-700 file:border file:border-gray-300 hover:file:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800"
                                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                 disabled={isSubmitting}
                             />
@@ -292,10 +317,41 @@ export default function EntryCard({
                             )}
                             {entry.fileName && (
                                 <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded">
-                                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                    <span className="text-sm text-gray-900 dark:text-gray-200 flex-1">{entry.fileName}</span>
+                                    <span className="text-sm text-gray-900 dark:text-gray-200 flex-1 flex items-center gap-1.5">
+                                        {entry.fileName}
+                                        {/* Warning icon with tooltip - only show for add/edit source */}
+                                        {entry.fileSource === 'add_edit' && (
+                                            <div className="relative group inline-flex">
+                                                <svg
+                                                    className="w-4 h-4 text-amber-500 dark:text-amber-400 cursor-help hover:text-amber-600 dark:hover:text-amber-300 transition-colors"
+                                                    fill="currentColor"
+                                                    viewBox="0 0 20 20"
+                                                >
+                                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                </svg>
+                                                {/* Tooltip - improved for both light and dark mode */}
+                                                <div className="absolute bottom-full left-0 mb-2 w-64 px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl border border-gray-200 dark:border-gray-600">
+                                                    <div className="text-left space-y-2">
+                                                        <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-600">
+                                                            <span className="text-amber-500 dark:text-amber-400 text-sm">⚠️</span>
+                                                            <span className="font-semibold text-amber-600 dark:text-amber-300">File Upload Notice</span>
+                                                        </div>
+                                                        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                                                            Files attached via <span className="text-gray-900 dark:text-white font-medium">Add/Edit</span> may not submit correctly.
+                                                        </p>
+                                                        <p className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                                            → Re-upload here for guaranteed submission.
+                                                        </p>
+                                                    </div>
+                                                    {/* Tooltip arrow */}
+                                                    <div className="absolute top-full left-4 border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </span>
                                     <button
                                         type="button"
                                         onClick={() => setShowPreview(true)}
