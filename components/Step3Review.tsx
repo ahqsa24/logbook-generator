@@ -27,6 +27,7 @@ export default function Step3Review({
     onUpdateEntry,
     onAddEntry,
     onDeleteEntry,
+    onDeleteAll,
 }: Step3ReviewProps) {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editedEntry, setEditedEntry] = useState<LogbookEntry | null>(null);
@@ -37,6 +38,7 @@ export default function Step3Review({
 
     // Delete confirmation state
     const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
+    const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
     // Add Entry form ref for auto-scroll
     const addEntryFormRef = useRef<HTMLDivElement | null>(null);
@@ -167,6 +169,28 @@ export default function Step3Review({
 
     const handleCancelDelete = () => {
         setDeleteConfirmIndex(null);
+    };
+
+    const handleDeleteAll = () => {
+        setShowDeleteAllConfirm(true);
+    };
+
+    const handleConfirmDeleteAll = () => {
+        if (onDeleteAll) {
+            // Use the dedicated delete all function if provided
+            onDeleteAll();
+        } else {
+            // Fallback: Delete all entries by repeatedly deleting index 0
+            const totalEntries = entries.length;
+            for (let i = 0; i < totalEntries; i++) {
+                onDeleteEntry(0);
+            }
+        }
+        setShowDeleteAllConfirm(false);
+    };
+
+    const handleCancelDeleteAll = () => {
+        setShowDeleteAllConfirm(false);
     };
 
     const updateNewEntryField = (field: keyof LogbookEntry, value: any) => {
@@ -305,6 +329,17 @@ export default function Step3Review({
                                 )}
                             </svg>
                             <span className="hidden sm:inline">{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
+                        </button>
+                        <button
+                            onClick={handleDeleteAll}
+                            className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm hover:shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isSubmitting || hasSubmitted || entries.length === 0}
+                            title="Delete all entries"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span className="hidden sm:inline">Delete All</span>
                         </button>
                         <button
                             onClick={handleStartAddEntry}
@@ -460,6 +495,46 @@ export default function Step3Review({
                 onConfirm={handleConfirmDelete}
                 onCancel={handleCancelDelete}
             />
+
+            {/* Delete All Confirmation Modal */}
+            {showDeleteAllConfirm && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 border border-red-200 dark:border-red-700">
+                        <div className="flex items-start gap-4 mb-4">
+                            <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+                                    Delete All Entries?
+                                </h3>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                    You are about to delete <strong className="text-red-600 dark:text-red-400">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</strong>.
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    This action cannot be undone. Are you sure you want to continue?
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={handleCancelDeleteAll}
+                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmDeleteAll}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium shadow-sm"
+                            >
+                                Delete All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

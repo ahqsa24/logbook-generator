@@ -318,6 +318,13 @@ export default function StepsSection() {
         setEntries(updatedEntries);
     };
 
+    const handleDeleteAll = async () => {
+        // Clear all entries and their files from IndexedDB
+        await fileStorage.clearAll();
+        setEntries([]);
+        console.log('[StepsSection] All entries deleted');
+    };
+
     const handleSubmitAll = async () => {
         const submissionResults = await submitAll(entries, aktivitasId, cookies);
         setHasSubmitted(true);
@@ -384,6 +391,7 @@ export default function StepsSection() {
                             onUpdateEntry={handleUpdateEntry}
                             onAddEntry={handleAddEntry}
                             onDeleteEntry={handleDeleteEntry}
+                            onDeleteAll={handleDeleteAll}
                             onSubmit={handleSubmitAll}
                             onBack={() => handleGoBack(3)}
                         />

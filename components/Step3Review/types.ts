@@ -20,4 +20,5 @@ export interface Step3ReviewProps {
     onUpdateEntry: (index: number, updatedEntry: LogbookEntry) => void;
     onAddEntry: (newEntry: LogbookEntry) => void;
     onDeleteEntry: (index: number) => void;
+    onDeleteAll?: () => void;  // Optional: Delete all entries at once
 }
