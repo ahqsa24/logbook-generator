@@ -37,7 +37,15 @@ export interface Step3Data {
     entries: LogbookEntry[];
     results?: SubmissionResult[];
     hasSubmitted: boolean;
+    uploadedFiles?: Array<{
+        name: string;
+        entriesCount: number;
+        uploadedAt: string;
+        status: 'success' | 'error';
+        source: 'step2' | 'step3';
+    }>;
     savedAt: string;
+
 }
 
 export interface MetaData {

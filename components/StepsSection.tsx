@@ -5,6 +5,7 @@ import { LogbookEntry, SubmissionResult, CookieData, Lecturer } from '@/types/lo
 import { parseExcelFile, parseZipFile, parseCookieString } from '@/lib/logbook-service';
 import { validateLogbookEntry } from '@/lib/validation';
 import { fileStorage } from '@/lib/fileStorage';
+import { findDuplicates, removeDuplicates } from '@/lib/duplicateChecker';
 import {
     saveStep1Data,
     loadStep1Data,
@@ -36,6 +37,22 @@ export default function StepsSection() {
     const [hasSubmitted, setHasSubmitted] = useState(false);
     const [lecturers, setLecturers] = useState<Lecturer[]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
+
+    // Step 3 file upload state
+    const [uploadedFiles, setUploadedFiles] = useState<Array<{
+        name: string;
+        entriesCount: number;
+        uploadedAt: string;
+        status: 'success' | 'error';
+        source: 'step2' | 'step3';
+    }>>([]);
+    const [isUploadingFile, setIsUploadingFile] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [duplicateWarning, setDuplicateWarning] = useState<{
+        duplicates: any[];
+        newEntries: LogbookEntry[];
+        fileName: string;
+    } | null>(null);
 
     // Use custom hooks
     const { isSubmitting, currentSubmission, results, submitAll, setResults } = useSubmission();
@@ -109,6 +126,7 @@ export default function StepsSection() {
                 }
                 if (step3Data.results) setResults(step3Data.results);
                 if (step3Data.hasSubmitted) setHasSubmitted(step3Data.hasSubmitted);
+                if (step3Data.uploadedFiles) setUploadedFiles(step3Data.uploadedFiles);
             }
 
             // Restore step if valid data exists
@@ -166,9 +184,10 @@ export default function StepsSection() {
                 entries: entries,
                 results: results,
                 hasSubmitted: hasSubmitted,
+                uploadedFiles: uploadedFiles,
             });
         }
-    }, [entries, results, hasSubmitted, step, isLoaded]);
+    }, [entries, results, hasSubmitted, step, isLoaded, uploadedFiles]);
 
     // Save meta data (current step) when step changes
     useEffect(() => {
@@ -250,11 +269,28 @@ export default function StepsSection() {
                 parsedEntries = await parseExcelFile(file);
             }
 
-            const validatedEntries = parsedEntries.map(entry => ({
+            // Add entry source metadata
+            const entriesWithSource = parsedEntries.map(entry => ({
                 ...entry,
+                entrySource: {
+                    type: 'step2' as const,
+                    fileName: file.name,
+                    uploadedAt: new Date().toISOString(),
+                },
                 validation: validateLogbookEntry(entry)
             }));
-            setEntries(validatedEntries);
+
+            setEntries(entriesWithSource);
+
+            // Track uploaded file
+            setUploadedFiles([{
+                name: file.name,
+                entriesCount: entriesWithSource.length,
+                uploadedAt: new Date().toISOString(),
+                status: 'success',
+                source: 'step2'
+            }]);
+
             setStep(3);
         } catch (error) {
             const errorMessage = (error as Error).message || 'Unknown error';
@@ -267,6 +303,155 @@ export default function StepsSection() {
         // Start with empty entries - user can add entries manually using "Add Entry" button
         setEntries([]);
         setStep(3);
+    };
+
+    const handleAdditionalFileUpload = async (file: File) => {
+        setIsUploadingFile(true);
+        setUploadError(null);
+
+        try {
+            // 1. Parse file
+            let newEntries: LogbookEntry[];
+            if (file.name.endsWith('.zip')) {
+                const { entries } = await parseZipFile(file);
+                newEntries = entries;
+            } else {
+                newEntries = await parseExcelFile(file);
+            }
+
+            // 2. Add entry source metadata
+            const entriesWithSource = newEntries.map(entry => ({
+                ...entry,
+                entrySource: {
+                    type: 'step3_upload' as const,
+                    fileName: file.name,
+                    uploadedAt: new Date().toISOString(),
+                },
+                validation: validateLogbookEntry(entry)
+            }));
+
+            // 3. Check for duplicates
+            const duplicates = findDuplicates(entries, entriesWithSource);
+
+            if (duplicates.length > 0) {
+                // Show duplicate warning modal
+                setDuplicateWarning({
+                    duplicates,
+                    newEntries: entriesWithSource,
+                    fileName: file.name
+                });
+                setIsUploadingFile(false);
+                return; // Wait for user decision
+            }
+
+            // 4. No duplicates - merge directly
+            setEntries([...entries, ...entriesWithSource]);
+
+            // 5. Track uploaded file
+            setUploadedFiles([...uploadedFiles, {
+                name: file.name,
+                entriesCount: entriesWithSource.length,
+                uploadedAt: new Date().toISOString(),
+                status: 'success',
+                source: 'step3'
+            }]);
+
+            console.log(`[StepsSection] Added ${entriesWithSource.length} entries from ${file.name}`);
+        } catch (error) {
+            const errorMessage = (error as Error).message || 'Failed to upload file';
+            setUploadError(errorMessage);
+            console.error('[StepsSection] File upload error:', error);
+        } finally {
+            setIsUploadingFile(false);
+        }
+    };
+
+    const handleSkipDuplicates = () => {
+        if (!duplicateWarning) return;
+
+        // Remove duplicates and add only unique entries
+        const uniqueEntries = removeDuplicates(duplicateWarning.newEntries, duplicateWarning.duplicates);
+        setEntries([...entries, ...uniqueEntries]);
+
+        // Track uploaded file
+        setUploadedFiles([...uploadedFiles, {
+            name: duplicateWarning.fileName,
+            entriesCount: uniqueEntries.length,
+            uploadedAt: new Date().toISOString(),
+            status: 'success',
+            source: 'step3'
+        }]);
+
+        console.log(`[StepsSection] Added ${uniqueEntries.length} unique entries from ${duplicateWarning.fileName} (${duplicateWarning.duplicates.length} duplicates skipped)`);
+        setDuplicateWarning(null);
+    };
+
+    const handleKeepAllDuplicates = () => {
+        if (!duplicateWarning) return;
+
+        // Add all entries including duplicates
+        setEntries([...entries, ...duplicateWarning.newEntries]);
+
+        // Track uploaded file
+        setUploadedFiles([...uploadedFiles, {
+            name: duplicateWarning.fileName,
+            entriesCount: duplicateWarning.newEntries.length,
+            uploadedAt: new Date().toISOString(),
+            status: 'success',
+            source: 'step3'
+        }]);
+
+        console.log(`[StepsSection] Added ${duplicateWarning.newEntries.length} entries from ${duplicateWarning.fileName} (including ${duplicateWarning.duplicates.length} duplicates)`);
+        setDuplicateWarning(null);
+    };
+
+    const handleCancelDuplicate = () => {
+        console.log('[StepsSection] Upload cancelled by user');
+        setDuplicateWarning(null);
+    };
+
+    const handleKeepSelectedDuplicates = (selectedIndices: number[]) => {
+        if (!duplicateWarning) return;
+
+        // Get only the selected duplicate entries
+        const selectedEntries = selectedIndices.map(index => duplicateWarning.duplicates[index].newEntry);
+
+        // Get non-duplicate entries
+        const nonDuplicateEntries = removeDuplicates(duplicateWarning.newEntries, duplicateWarning.duplicates);
+
+        // Combine selected duplicates with non-duplicates
+        const entriesToAdd = [...nonDuplicateEntries, ...selectedEntries];
+
+        setEntries([...entries, ...entriesToAdd]);
+
+        // Track uploaded file
+        setUploadedFiles([...uploadedFiles, {
+            name: duplicateWarning.fileName,
+            entriesCount: entriesToAdd.length,
+            uploadedAt: new Date().toISOString(),
+            status: 'success',
+            source: 'step3'
+        }]);
+
+        console.log(`[StepsSection] Added ${entriesToAdd.length} entries from ${duplicateWarning.fileName} (${selectedEntries.length} selected duplicates + ${nonDuplicateEntries.length} unique)`);
+        setDuplicateWarning(null);
+    };
+
+    const handleRemoveUploadedFile = (fileName: string) => {
+        // Remove all entries that came from this file
+        const remainingEntries = entries.filter(entry =>
+            entry.entrySource?.fileName !== fileName
+        );
+
+        // Remove file from uploaded files list
+        const remainingFiles = uploadedFiles.filter(file => file.name !== fileName);
+
+        const removedCount = entries.length - remainingEntries.length;
+
+        setEntries(remainingEntries);
+        setUploadedFiles(remainingFiles);
+
+        console.log(`[StepsSection] Removed file "${fileName}" and ${removedCount} associated entries`);
     };
 
     const handleSupportingFileUpload = async (index: number, file: File) => {
@@ -323,13 +508,22 @@ export default function StepsSection() {
             fileDataLength: newEntry.fileData?.length || 0
         });
 
+        // Add entry source metadata for manual entries
+        const entryWithSource = {
+            ...newEntry,
+            entrySource: {
+                type: 'manual' as const,
+                uploadedAt: new Date().toISOString(),
+            }
+        };
+
         // Save file data to IndexedDB if present
-        if (newEntry.fileData && newEntry.fileName) {
+        if (entryWithSource.fileData && entryWithSource.fileName) {
             const newIndex = entries.length;
-            await fileStorage.saveEntry(`entry-${newIndex}`, newEntry.fileData, newEntry.fileName);
+            await fileStorage.saveEntry(`entry-${newIndex}`, entryWithSource.fileData, entryWithSource.fileName);
         }
 
-        setEntries([...entries, newEntry]);
+        setEntries([...entries, entryWithSource]);
     };
 
     const handleDeleteEntry = async (index: number) => {
@@ -410,6 +604,16 @@ export default function StepsSection() {
                             currentSubmission={currentSubmission}
                             lecturers={lecturers}
                             onFileUpload={handleSupportingFileUpload}
+                            onAdditionalFileUpload={handleAdditionalFileUpload}
+                            uploadedFiles={uploadedFiles}
+                            isUploadingFile={isUploadingFile}
+                            uploadError={uploadError}
+                            onRemoveUploadedFile={handleRemoveUploadedFile}
+                            duplicateWarning={duplicateWarning}
+                            onSkipDuplicates={handleSkipDuplicates}
+                            onKeepAllDuplicates={handleKeepAllDuplicates}
+                            onCancelDuplicate={handleCancelDuplicate}
+                            onKeepSelectedDuplicates={handleKeepSelectedDuplicates}
                             onUpdateEntry={handleUpdateEntry}
                             onAddEntry={handleAddEntry}
                             onDeleteEntry={handleDeleteEntry}
