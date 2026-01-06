@@ -37,11 +37,20 @@ export interface Step3Data {
     entries: LogbookEntry[];
     results?: SubmissionResult[];
     hasSubmitted: boolean;
+    uploadedFiles?: Array<{
+        name: string;
+        entriesCount: number;
+        uploadedAt: string;
+        status: 'success' | 'error';
+        source: 'step2' | 'step3';
+    }>;
     savedAt: string;
+
 }
 
 export interface MetaData {
     currentStep: number;
+    highestStep: number;  // Track the highest step user has reached
     lastVisited: string;
 }
 
@@ -173,14 +182,19 @@ export const loadStep3Data = (): Step3Data | null => {
 };
 
 /**
- * Save meta data (current step)
+ * Save meta data (current step and highest step reached)
  */
 export const saveMetaData = (step: number): void => {
     if (!isBrowser()) return;
 
     try {
+        // Load existing meta to preserve highestStep
+        const existing = loadMetaData();
+        const currentHighest = existing?.highestStep || 1;
+
         const data: MetaData = {
             currentStep: step,
+            highestStep: Math.max(step, currentHighest), // Track the highest step reached
             lastVisited: new Date().toISOString(),
         };
         localStorage.setItem(STORAGE_KEYS.META, JSON.stringify(data));
@@ -315,4 +329,15 @@ export const getSessionAge = (): number | null => {
         return Math.floor((now - savedTime) / (1000 * 60));
     }
     return null;
+};
+
+/**
+ * Get the highest step user has reached
+ * Used for "Resume Session" to return to the furthest progress
+ */
+export const getHighestStep = (): number => {
+    if (!isBrowser()) return 1;
+
+    const meta = loadMetaData();
+    return meta?.highestStep || 1;
 };
