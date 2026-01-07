@@ -15,11 +15,11 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body className={inter.className}>
+                <LanguageProvider>
                 <TutorialProvider>
-                 <LanguageProvider>
                     {children}
-                  <LanguageProvider>
                 </TutorialProvider>
+                <LanguageProvider>
             </body>
         </html>
     )
