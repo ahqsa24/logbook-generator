@@ -37,7 +37,25 @@ export default function AdBanner({ onClose }: AdBannerProps) {
 
     // Banner content configuration
     const banners: BannerConfig[] = [
-        // Banner 1: Terminal Version (GitHub)
+        // Banner 1: Media Partner Opportunity (Shows on EVEN hours: 0,2,4,6,8,10,12,14,16,18,20,22)
+        {
+            id: 1,
+            type: 'text',
+            theme: 'partner',
+            icon: 'megaphone',
+            title: 'Become a Media Partner',
+            subtitle: 'Advertise your brand to IPB students',
+            description: 'Limited slots available! Reach thousands of IPB students using this logbook generator.',
+            features: [
+                'Targeted audience: IPB students & developers',
+                'High visibility with modal banner ads',
+                'Flexible banner formats (text or image)',
+                'Affordable rates for students & startups'
+            ],
+            ctaText: 'Contact via Instagram',
+            ctaLink: 'https://instagram.com/adidsadida24',
+        },
+        // Banner 2: Terminal Version (GitHub) (Shows on ODD hours: 1,3,5,7,9,11,13,15,17,19,21,23)
         {
             id: 2,
             type: 'text',
@@ -54,24 +72,6 @@ export default function AdBanner({ onClose }: AdBannerProps) {
             ],
             ctaText: 'View on GitHub',
             ctaLink: 'https://github.com/Anro128/IPB-Student-Portal-Logbook-Bot',
-        },
-        // Banner 2: Media Partner Opportunity
-        {
-            id: 1,
-            type: 'text',
-            theme: 'partner',
-            icon: 'megaphone',
-            title: 'Become a Media Partner',
-            subtitle: 'Advertise your brand to IPB students',
-            description: 'Limited slots available! Reach thousands of IPB students using this logbook generator.',
-            features: [
-                'Targeted audience: IPB students & developers',
-                'High visibility with modal banner ads',
-                'Flexible banner formats (text or image)',
-                'Affordable rates for students & startups'
-            ],
-            ctaText: 'Contact via Instagram',
-            ctaLink: '', // Will be filled by user
         },
         // Example: Image-based banner (uncomment and configure when needed)
         // {
@@ -103,9 +103,17 @@ export default function AdBanner({ onClose }: AdBannerProps) {
     }, []);
 
     // Rotation logic: changes banner based on hour of day
+    // Banners rotate every hour in sequence
+    // Example with 2 banners:
+    //   - Hour 0, 2, 4, 6, ... (even) -> Banner 1 (index 0)
+    //   - Hour 1, 3, 5, 7, ... (odd)  -> Banner 2 (index 1)
+    // Example with 3 banners:
+    //   - Hour 0, 3, 6, 9, ...  -> Banner 1 (index 0)
+    //   - Hour 1, 4, 7, 10, ... -> Banner 2 (index 1)
+    //   - Hour 2, 5, 8, 11, ... -> Banner 3 (index 2)
     const getBannerRotation = (): number => {
-        const hour = new Date().getHours();
-        return Math.floor(hour / 8) % banners.length;
+        const hour = new Date().getHours(); // 0-23
+        return hour % banners.length; // Rotate based on total number of banners
     };
 
     const handleClose = () => {
@@ -145,14 +153,18 @@ export default function AdBanner({ onClose }: AdBannerProps) {
                     buttonBg: 'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700',
                     buttonText: 'text-white',
                     indicatorActive: 'bg-green-600 dark:bg-green-500',
+                    headerBg: 'bg-gray-50 dark:bg-gray-800',
+                    borderColor: 'border-gray-200 dark:border-gray-700',
                 };
             case 'partner':
                 return {
-                    iconBg: 'bg-gradient-to-br from-purple-500 to-pink-500',
+                    iconBg: 'bg-purple-600',
                     iconColor: 'text-white',
-                    buttonBg: 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700',
+                    buttonBg: 'bg-purple-600 hover:bg-purple-700',
                     buttonText: 'text-white',
-                    indicatorActive: 'bg-gradient-to-r from-purple-600 to-pink-600',
+                    indicatorActive: 'bg-purple-600',
+                    headerBg: 'bg-purple-600',
+                    borderColor: 'border-purple-500',
                 };
             default:
                 return {
@@ -161,6 +173,8 @@ export default function AdBanner({ onClose }: AdBannerProps) {
                     buttonBg: 'bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200',
                     buttonText: 'text-white dark:text-gray-900',
                     indicatorActive: 'bg-gray-900 dark:bg-gray-100',
+                    headerBg: 'bg-gray-50 dark:bg-gray-800',
+                    borderColor: 'border-gray-200 dark:border-gray-700',
                 };
         }
     };
@@ -195,29 +209,38 @@ export default function AdBanner({ onClose }: AdBannerProps) {
                 {banner.type === 'text' ? (
                     // Text-based banner
                     <div
-                        className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 shadow-2xl overflow-hidden pointer-events-auto animate-slideUp"
+                        className={`relative w-full max-w-md bg-white dark:bg-gray-900 rounded-lg border ${themeColors.borderColor} shadow-2xl overflow-hidden pointer-events-auto animate-slideUp`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Close button */}
                         <button
                             onClick={handleClose}
-                            className="absolute top-3 right-3 z-10 p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            className={`absolute top-3 right-3 z-10 p-1.5 rounded-md transition-colors ${banner.theme === 'partner'
+                                    ? 'hover:bg-purple-700 text-white'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                }`}
                             aria-label="Close banner"
                         >
-                            <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            <X className="w-5 h-5" />
                         </button>
 
-                        {/* Header with dynamic icon */}
-                        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                        {/* Header with dynamic styling */}
+                        <div className={`${themeColors.headerBg} ${banner.theme === 'partner' ? '' : `border-b ${themeColors.borderColor}`} px-6 py-4`}>
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 ${themeColors.iconBg} rounded-lg`}>
                                     <IconComponent className={`w-6 h-6 ${themeColors.iconColor}`} />
                                 </div>
                                 <div className="flex-1">
-                                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                    <h2 className={`text-lg font-semibold ${banner.theme === 'partner'
+                                            ? 'text-white'
+                                            : 'text-gray-900 dark:text-gray-100'
+                                        }`}>
                                         {banner.title}
                                     </h2>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    <p className={`text-sm ${banner.theme === 'partner'
+                                            ? 'text-purple-100'
+                                            : 'text-gray-600 dark:text-gray-400'
+                                        }`}>
                                         {banner.subtitle}
                                     </p>
                                 </div>
@@ -226,22 +249,33 @@ export default function AdBanner({ onClose }: AdBannerProps) {
 
                         {/* Content */}
                         <div className="px-6 py-5">
-                            {/* Terminal/Description icon */}
+                            {/* Description */}
                             <div className="flex items-start gap-3 mb-5">
-                                <Terminal className="w-5 h-5 text-gray-600 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+                                {banner.theme === 'partner' ? (
+                                    <Megaphone className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                                ) : (
+                                    <Terminal className="w-5 h-5 text-gray-600 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+                                )}
                                 <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                                     {banner.description}
                                 </p>
                             </div>
 
-                            {/* Features list with green checkmarks */}
+                            {/* Features list */}
                             <div className="space-y-2.5 mb-6">
                                 {banner.features?.map((feature, index) => (
                                     <div
                                         key={index}
                                         className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300"
                                     >
-                                        <svg className="w-4 h-4 text-green-600 dark:text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 16 16">
+                                        <svg
+                                            className={`w-4 h-4 mt-0.5 flex-shrink-0 ${banner.theme === 'partner'
+                                                    ? 'text-purple-600'
+                                                    : 'text-green-600 dark:text-green-500'
+                                                }`}
+                                            fill="currentColor"
+                                            viewBox="0 0 16 16"
+                                        >
                                             <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" />
                                         </svg>
                                         <span className="leading-relaxed">{feature}</span>
