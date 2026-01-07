@@ -164,7 +164,7 @@ export default function AdBanner({ onClose }: AdBannerProps) {
                     buttonText: 'text-white',
                     indicatorActive: 'bg-purple-600',
                     headerBg: 'bg-purple-600',
-                    borderColor: 'border-purple-500',
+                    borderColor: 'border-gray-200 dark:border-gray-700',
                 };
             default:
                 return {
@@ -216,8 +216,8 @@ export default function AdBanner({ onClose }: AdBannerProps) {
                         <button
                             onClick={handleClose}
                             className={`absolute top-3 right-3 z-10 p-1.5 rounded-md transition-colors ${banner.theme === 'partner'
-                                    ? 'hover:bg-purple-700 text-white'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                ? 'hover:bg-purple-700 text-white'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
                                 }`}
                             aria-label="Close banner"
                         >
@@ -232,14 +232,14 @@ export default function AdBanner({ onClose }: AdBannerProps) {
                                 </div>
                                 <div className="flex-1">
                                     <h2 className={`text-lg font-semibold ${banner.theme === 'partner'
-                                            ? 'text-white'
-                                            : 'text-gray-900 dark:text-gray-100'
+                                        ? 'text-white'
+                                        : 'text-gray-900 dark:text-gray-100'
                                         }`}>
                                         {banner.title}
                                     </h2>
                                     <p className={`text-sm ${banner.theme === 'partner'
-                                            ? 'text-purple-100'
-                                            : 'text-gray-600 dark:text-gray-400'
+                                        ? 'text-purple-100'
+                                        : 'text-gray-600 dark:text-gray-400'
                                         }`}>
                                         {banner.subtitle}
                                     </p>
@@ -270,8 +270,8 @@ export default function AdBanner({ onClose }: AdBannerProps) {
                                     >
                                         <svg
                                             className={`w-4 h-4 mt-0.5 flex-shrink-0 ${banner.theme === 'partner'
-                                                    ? 'text-purple-600'
-                                                    : 'text-green-600 dark:text-green-500'
+                                                ? 'text-purple-600'
+                                                : 'text-green-600 dark:text-green-500'
                                                 }`}
                                             fill="currentColor"
                                             viewBox="0 0 16 16"
