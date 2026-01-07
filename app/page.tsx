@@ -1,6 +1,8 @@
 'use client';
 
 import DarkModeToggle from '@/components/DarkModeToggle';
+import TutorialButton from '@/components/TutorialButton';
+import TutorialModal from '@/components/TutorialModal';
 import LandingSection from '@/components/LandingSection';
 import ExplanationSection from '@/components/ExplanationSection';
 import StepsSection from '@/components/StepsSection';
@@ -13,6 +15,8 @@ export default function Home() {
             <Analytics />
             <AdBanner />
             <DarkModeToggle />
+            <TutorialButton />
+            <TutorialModal />
             <LandingSection />
             <ExplanationSection />
             <StepsSection />
